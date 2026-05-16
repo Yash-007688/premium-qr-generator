@@ -1,6 +1,6 @@
 // Auto-redirect if already logged in
 window.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
         window.location.replace("dashboard.html");
     }
@@ -39,7 +39,7 @@ if (loginForm) {
 
         try {
             // Call Supabase
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
@@ -79,7 +79,7 @@ if (signupForm) {
 
         try {
             // Call Supabase
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password,
                 options: {

@@ -1,6 +1,6 @@
 // 0. Protect Dashboard & Handle Logout
 window.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
         window.location.href = "login.html";
     }
@@ -10,7 +10,7 @@ const logoutBtn = document.querySelector('.logout-btn');
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
         window.location.href = "index.html";
     });
 }
@@ -271,19 +271,19 @@ document.getElementById('download-btn').addEventListener('click', async () => {
     
     // Save to Supabase Database
     try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         const userId = session?.user?.id;
         
         if (userId) {
             if (activeTab === 'wifi') {
-                await supabase.from('wifi_qrs').insert({
+                await supabaseClient.from('wifi_qrs').insert({
                     user_id: userId,
                     ssid: name,
                     template_name: currentTemplate,
                     qr_image_data: imageData
                 });
             } else {
-                await supabase.from('link_qrs').insert({
+                await supabaseClient.from('link_qrs').insert({
                     user_id: userId,
                     url: document.getElementById('url').value,
                     template_name: currentTemplate,

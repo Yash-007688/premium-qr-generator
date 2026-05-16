@@ -1,6 +1,6 @@
 // Protect Admin Page
 window.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
         window.location.href = "login.html";
         return;
