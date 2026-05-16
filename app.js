@@ -19,6 +19,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         window.location.href = "login.html";
         return;
     }
+    await ensureUserProfile(session);
     const allowStudio = params.get('studio') === '1';
     if (!allowStudio) {
         const role = await fetchUserRole(session.user.id);
@@ -343,11 +344,7 @@ document.getElementById('download-btn').addEventListener('click', async () => {
         
         if (userId) {
             // Step 1: Upsert profile so FK never fails
-            await supabaseClient.from('profiles').upsert({
-                id: userId,
-                email: session.user.email,
-                full_name: session.user.user_metadata?.full_name || ''
-            }, { onConflict: 'id', ignoreDuplicates: true });
+            await ensureUserProfile(session);
 
             // Step 2: Insert new QR record (each download = new row)
             let dbError = null;

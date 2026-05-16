@@ -1,3 +1,22 @@
+async function ensureUserProfile(session) {
+    if (!session?.user) return { error: 'No session' };
+
+    const meta = session.user.user_metadata || {};
+    const fullName = meta.full_name || meta.name || meta.fullName || '';
+
+    const { error } = await supabaseClient.from('profiles').upsert(
+        {
+            id: session.user.id,
+            email: session.user.email,
+            full_name: fullName
+        },
+        { onConflict: 'id' }
+    );
+
+    if (error) console.error('Profile save failed:', error.message);
+    return { error: error?.message || null };
+}
+
 async function fetchUserRole(userId) {
     const { data, error } = await supabaseClient
         .from('profiles')
@@ -22,6 +41,9 @@ function getPostLoginBase() {
 }
 
 async function redirectByRole(userId) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) await ensureUserProfile(session);
+
     const role = await fetchUserRole(userId);
     const base = getPostLoginBase();
     const page = role === 'admin' ? 'admin.html' : 'dashboard.html';

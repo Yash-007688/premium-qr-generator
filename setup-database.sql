@@ -40,6 +40,12 @@ ALTER TABLE public.link_qrs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Authenticated users can read all profiles" ON public.profiles
     FOR SELECT USING (auth.role() = 'authenticated');
 
+CREATE POLICY "Users can insert their own profile" ON public.profiles
+    FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" ON public.profiles
+    FOR UPDATE USING (auth.uid() = id);
+
 -- Wi-Fi QRs
 CREATE POLICY "Users can insert their own wifi qrs" ON public.wifi_qrs
     FOR INSERT WITH CHECK (auth.uid() = user_id);

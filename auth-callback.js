@@ -47,6 +47,8 @@
 
     sessionStorage.removeItem('qrweb_oauth_return_base');
 
+    await ensureUserProfile(session);
+
     if (statusEl) statusEl.textContent = 'Success! Opening your dashboard...';
     await redirectByRole(session.user.id);
 })();
