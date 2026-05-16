@@ -1,3 +1,11 @@
+// Auto-redirect if already logged in
+window.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        window.location.replace("dashboard.html");
+    }
+});
+
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 
