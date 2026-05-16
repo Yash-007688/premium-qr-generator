@@ -17,33 +17,46 @@ const GOOGLE_BTN_HTML = `
     <span>Continue with Google</span>
 `;
 
-document.querySelectorAll('.google-btn').forEach((googleBtn) => {
-    const originalHtml = googleBtn.innerHTML.trim() || GOOGLE_BTN_HTML;
-    googleBtn.addEventListener('click', async () => {
-        googleBtn.disabled = true;
-        googleBtn.innerHTML = '<span>Redirecting...</span>';
-        try {
-            saveOAuthReturnBase();
-            const redirectTo = getOAuthRedirectUrl();
-            const { error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo,
-                    skipBrowserRedirect: false
+function setupGoogleSignIn() {
+    document.querySelectorAll('.google-btn').forEach((googleBtn) => {
+        const originalHtml = googleBtn.innerHTML.trim() || GOOGLE_BTN_HTML;
+        googleBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            googleBtn.disabled = true;
+            googleBtn.innerHTML = '<span>Redirecting...</span>';
+            try {
+                const redirectTo = getOAuthRedirectUrl();
+                const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo,
+                        skipBrowserRedirect: false
+                    }
+                });
+                if (error) {
+                    googleBtn.disabled = false;
+                    googleBtn.innerHTML = originalHtml;
+                    alert('Google sign-in failed: ' + error.message);
+                    return;
                 }
-            });
-            if (error) {
+                if (data?.url) {
+                    window.location.href = data.url;
+                }
+            } catch (err) {
                 googleBtn.disabled = false;
                 googleBtn.innerHTML = originalHtml;
-                alert('Google sign-in failed: ' + error.message);
+                alert('Error: ' + (err.message || 'Could not start Google sign-in'));
             }
-        } catch (err) {
-            googleBtn.disabled = false;
-            googleBtn.innerHTML = originalHtml;
-            alert('Error: ' + err.message);
-        }
+        });
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupGoogleSignIn);
+} else {
+    setupGoogleSignIn();
+}
 
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
