@@ -26,7 +26,8 @@ function setupGoogleSignIn() {
             googleBtn.disabled = true;
             googleBtn.innerHTML = '<span>Redirecting...</span>';
             try {
-                const redirectTo = getOAuthRedirectUrl();
+                const onVercel = window.location.hostname.includes('vercel.app');
+                const redirectTo = onVercel ? getProductionOAuthRedirectUrl() : getOAuthRedirectUrl();
                 const { data, error } = await supabaseClient.auth.signInWithOAuth({
                     provider: 'google',
                     options: {

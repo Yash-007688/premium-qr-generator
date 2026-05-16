@@ -55,3 +55,9 @@ function getOAuthReturnBase() {
 function getOAuthRedirectUrl() {
     return saveOAuthReturnBase() + '/auth-callback.html';
 }
+
+/** Used when signing in from Vercel — forces Supabase redirect target */
+function getProductionOAuthRedirectUrl() {
+    sessionStorage.setItem(OAUTH_RETURN_KEY, PRODUCTION_APP_URL);
+    return PRODUCTION_APP_URL + '/auth-callback.html';
+}
