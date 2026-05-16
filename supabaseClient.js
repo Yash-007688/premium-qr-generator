@@ -5,7 +5,12 @@ const supabaseUrl = cfg.SUPABASE_URL || 'https://viqqmphewqrwmvyosfep.supabase.c
 const supabaseAnonKey = cfg.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcXFtcGhld3Fyd212eW9zZmVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MDk0MTIsImV4cCI6MjA5NDQ4NTQxMn0.F6mPKM88MRBsze8NRkPz2Xi4neB-OlSMOkEhHEqj6dc';
 
 const { createClient } = supabase;
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        detectSessionInUrl: true,
+        persistSession: true
+    }
+});
 
 function getAppBaseUrl() {
     // Always use the site the user is on (Vercel, localhost, etc.)
