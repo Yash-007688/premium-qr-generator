@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Web | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- Top Navigation -->
+        <nav class="dashboard-nav">
+            <div class="logo">✨ QR Web Dashboard</div>
+            <a href="index.html" class="logout-btn">Log Out</a>
+        </nav>
+
+        <!-- Main Workspace -->
+        <div class="dashboard-content">
+            <!-- Controls Panel -->
+            <aside class="controls-panel">
+                <div class="header">
+                    <div class="logo" style="font-size:1.2rem;">Studio</div>
+                    <p>Configure your poster</p>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="wifi">Wi-Fi Network</button>
+                    <button class="tab-btn" data-tab="url">Website URL</button>
+                </div>
+
+                <!-- Wi-Fi Form -->
+                <div id="wifi-form" class="form-section active">
+                    <div class="input-group">
+                        <label for="ssid">Network Name (SSID)</label>
+                        <input type="text" id="ssid" placeholder="e.g. MyHomeNetwork" value="JKM_24">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="Enter network password" value="9752753462">
+                    </div>
+                    <div class="input-group">
+                        <label for="encryption">Security Type</label>
+                        <select id="encryption">
+                            <option value="WPA" selected>WPA/WPA2/WPA3</option>
+                            <option value="WEP">WEP</option>
+                            <option value="nopass">None</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- URL Form -->
+                <div id="url-form" class="form-section">
+                    <div class="input-group">
+                        <label for="url">Website URL</label>
+                        <input type="url" id="url" placeholder="https://example.com" value="https://google.com">
+                    </div>
+                </div>
+
+                <!-- Colors Section -->
+                <div class="section-title">Colors</div>
+                <div class="color-pickers">
+                    <div class="color-picker-group">
+                        <label for="dot-color">QR Dots</label>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="dot-color" value="#000000">
+                        </div>
+                    </div>
+                    <div class="color-picker-group">
+                        <label for="bg-color">QR Background</label>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="bg-color" value="#ffffff">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template Section -->
+                <div class="section-title">Select Template</div>
+                <div class="template-selector">
+                    <div class="template-option active" data-template="minimalist">
+                        <div class="template-preview minimalist-preview"></div>
+                        <span>Minimalist</span>
+                    </div>
+                    <div class="template-option" data-template="savage">
+                        <div class="template-preview savage-preview"></div>
+                        <span>Savage Neon</span>
+                    </div>
+                    <div class="template-option" data-template="artdeco">
+                        <div class="template-preview artdeco-preview"></div>
+                        <span>Art Deco Gold</span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <button id="generate-btn" class="primary-btn">Generate Preview</button>
+                <button id="download-btn" class="secondary-btn" style="display: none;">Download Poster</button>
+            </aside>
+
+            <!-- Preview Panel -->
+            <main class="preview-panel">
+                <div class="preview-container">
+                    <p class="preview-hint">Live Preview</p>
+                    <!-- Hidden div for library to generate the raw QR code -->
+                    <div id="qr-code-raw" style="display: none;"></div>
+                    
+                    <!-- Visible canvas where the template + QR are drawn -->
+                    <canvas id="poster-canvas" width="800" height="800"></canvas>
+                </div>
+            </main>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

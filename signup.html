@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Web | Sign Up</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-body">
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="logo text-center">✨ QR Web</div>
+            <h2>Create an Account</h2>
+            <p class="auth-subtitle">Join us to generate unlimited QR codes</p>
+
+            <form id="signup-form">
+                <div class="input-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" placeholder="John Doe" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="you@example.com" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="primary-btn" style="margin-top: 1rem;">Sign Up</button>
+            </form>
+            
+            <p class="auth-footer">Already have an account? <a href="login.html">Log In</a></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>
