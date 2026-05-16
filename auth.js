@@ -37,20 +37,28 @@ if (loginForm) {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
-        // Call Supabase
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password,
-        });
+        try {
+            // Call Supabase
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
 
-        if (error) {
-            showError(loginForm, error.message);
+            if (error) {
+                showError(loginForm, error.message);
+                btn.innerText = originalText;
+                btn.style.opacity = "1";
+                btn.disabled = false;
+            } else {
+                // Success
+                window.location.href = "dashboard.html";
+            }
+        } catch (err) {
+            console.error("Login Exception:", err);
+            showError(loginForm, "Network or server error. Please try again.");
             btn.innerText = originalText;
             btn.style.opacity = "1";
             btn.disabled = false;
-        } else {
-            // Success
-            window.location.href = "dashboard.html";
         }
     });
 }
@@ -69,31 +77,41 @@ if (signupForm) {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
-        // Call Supabase
-        const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    full_name: name
+        try {
+            // Call Supabase
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: name
+                    }
+                }
+            });
+
+            if (error) {
+                showError(signupForm, error.message);
+                btn.innerText = originalText;
+                btn.style.opacity = "1";
+                btn.disabled = false;
+            } else {
+                if (data.session) {
+                    // Auto-login worked
+                    window.location.href = "dashboard.html";
+                } else {
+                    // Email confirmation required
+                    showError(signupForm, "Account created! Please check your email to verify.");
+                    btn.innerText = "Verify Email";
+                    btn.style.opacity = "1";
+                    btn.disabled = false;
                 }
             }
-        });
-
-        if (error) {
-            showError(signupForm, error.message);
+        } catch (err) {
+            console.error("Signup Exception:", err);
+            showError(signupForm, "Network or server error. Please try again.");
             btn.innerText = originalText;
             btn.style.opacity = "1";
             btn.disabled = false;
-        } else {
-            if (data.session) {
-                // Auto-login worked
-                window.location.href = "dashboard.html";
-            } else {
-                // Email confirmation required
-                showError(signupForm, "Account created! Please check your email to verify.");
-                btn.innerText = "Verify Email";
-            }
         }
     });
 }
