@@ -26,7 +26,8 @@ document.querySelectorAll('.google-btn').forEach((googleBtn) => {
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: getOAuthRedirectUrl()
+                    redirectTo: getOAuthRedirectUrl(),
+                    skipBrowserRedirect: false
                 }
             });
             if (error) {

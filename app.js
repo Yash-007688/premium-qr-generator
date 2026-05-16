@@ -1,11 +1,24 @@
 // 0. Protect Dashboard & Handle Logout
 window.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('error')) {
+        const desc = params.get('error_description') || params.get('error') || 'Sign-in failed';
+        alert('Sign-in failed: ' + decodeURIComponent(desc.replace(/\+/g, ' ')));
+        window.location.replace('login.html');
+        return;
+    }
+
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+        await supabaseClient.auth.getSession();
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
         window.location.href = "login.html";
         return;
     }
-    const params = new URLSearchParams(window.location.search);
     const allowStudio = params.get('studio') === '1';
     if (!allowStudio) {
         const role = await fetchUserRole(session.user.id);

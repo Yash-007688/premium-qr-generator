@@ -8,9 +8,8 @@ const { createClient } = supabase;
 const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 function getAppBaseUrl() {
-    const fromEnv = (cfg.APP_URL || '').replace(/\/$/, '');
-    if (fromEnv) return fromEnv;
-    return window.location.origin;
+    // Always use the site the user is on (Vercel, localhost, etc.)
+    return window.location.origin.replace(/\/$/, '');
 }
 
 function getOAuthRedirectUrl() {
