@@ -55,7 +55,7 @@ if (loginForm) {
             }
         } catch (err) {
             console.error("Login Exception:", err);
-            showError(loginForm, "Network or server error. Please try again.");
+            showError(loginForm, "Error: " + (err.message || JSON.stringify(err)));
             btn.innerText = originalText;
             btn.style.opacity = "1";
             btn.disabled = false;
@@ -108,7 +108,7 @@ if (signupForm) {
             }
         } catch (err) {
             console.error("Signup Exception:", err);
-            showError(signupForm, "Network or server error. Please try again.");
+            showError(signupForm, "Error: " + (err.message || JSON.stringify(err)));
             btn.innerText = originalText;
             btn.style.opacity = "1";
             btn.disabled = false;
