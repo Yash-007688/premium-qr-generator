@@ -12,11 +12,20 @@ const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     }
 });
 
+const PRODUCTION_APP_URL = 'https://premium-qr-generator.vercel.app';
+
 function getAppBaseUrl() {
-    // Always use the site the user is on (Vercel, localhost, etc.)
+    const host = window.location.hostname;
+    const fromEnv = (cfg.APP_URL || '').replace(/\/$/, '');
+
+    // On Vercel: force production URL so Supabase never falls back to localhost Site URL mismatch
+    if (host.includes('vercel.app') || host === 'premium-qr-generator.vercel.app') {
+        return fromEnv && fromEnv.includes('vercel.app') ? fromEnv : PRODUCTION_APP_URL;
+    }
+
     return window.location.origin.replace(/\/$/, '');
 }
 
 function getOAuthRedirectUrl() {
-    return getAppBaseUrl() + '/dashboard.html';
+    return getAppBaseUrl() + '/auth-callback.html';
 }
