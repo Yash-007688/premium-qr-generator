@@ -23,10 +23,12 @@ document.querySelectorAll('.google-btn').forEach((googleBtn) => {
         googleBtn.disabled = true;
         googleBtn.innerHTML = '<span>Redirecting...</span>';
         try {
+            saveOAuthReturnBase();
+            const redirectTo = getOAuthRedirectUrl();
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: getOAuthRedirectUrl(),
+                    redirectTo,
                     skipBrowserRedirect: false
                 }
             });
