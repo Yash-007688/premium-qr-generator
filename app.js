@@ -47,6 +47,9 @@ templates.forEach(template => {
 // Automatically trigger preview when colors change
 document.getElementById('dot-color').addEventListener('input', generatePreview);
 document.getElementById('bg-color').addEventListener('input', generatePreview);
+// Live update poster text
+document.getElementById('poster-title').addEventListener('input', generatePreview);
+document.getElementById('poster-subtitle').addEventListener('input', generatePreview);
 
 // 3. QR Code Initialization
 const qrCode = new QRCodeStyling({
@@ -155,6 +158,9 @@ function drawPoster() {
 // === TEMPLATE DRAWING FUNCTIONS ===
 
 function drawMinimalist(ctx, w, h) {
+    const titleText = document.getElementById('poster-title').value || 'SCAN TO CONNECT';
+    const subtitleText = document.getElementById('poster-subtitle').value || 'Point your camera at the code';
+
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
     
@@ -166,15 +172,18 @@ function drawMinimalist(ctx, w, h) {
     ctx.fillStyle = "#334155";
     ctx.font = "bold 45px Inter, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("SCAN TO CONNECT", w/2, 110);
+    ctx.fillText(titleText.toUpperCase(), w/2, 110);
     
     ctx.fillStyle = "#94a3b8";
     ctx.font = "24px Inter, sans-serif";
-    ctx.fillText("Point your camera at the code", w/2, h - 80);
+    ctx.fillText(subtitleText, w/2, h - 80);
 }
 
 function drawSavage(ctx, w, h) {
-    ctx.fillStyle = "#09090b"; // Pitch black
+    const titleText = document.getElementById('poster-title').value || 'SAVAGE';
+    const subtitleText = document.getElementById('poster-subtitle').value || 'CONNECT';
+
+    ctx.fillStyle = "#09090b";
     ctx.fillRect(0, 0, w, h);
 
     const neonRed = "#ef4444";
@@ -186,10 +195,10 @@ function drawSavage(ctx, w, h) {
     ctx.shadowColor = neonRed;
     ctx.shadowBlur = 25;
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("S A V A G E", w/2, 130);
-    ctx.fillText("C O N N E C T", w/2, h - 90);
+    ctx.fillText(titleText.toUpperCase(), w/2, 130);
+    ctx.fillText(subtitleText.toUpperCase(), w/2, h - 90);
     
-    ctx.shadowBlur = 0; // Reset
+    ctx.shadowBlur = 0;
 
     // Corner brackets
     ctx.strokeStyle = neonRed;
@@ -198,25 +207,23 @@ function drawSavage(ctx, w, h) {
     const len = 90;
     
     ctx.beginPath();
-    // TL
     ctx.moveTo(pad + len, pad); ctx.lineTo(pad, pad); ctx.lineTo(pad, pad + len);
-    // TR
     ctx.moveTo(w - pad - len, pad); ctx.lineTo(w - pad, pad); ctx.lineTo(w - pad, pad + len);
-    // BL
     ctx.moveTo(pad, h - pad - len); ctx.lineTo(pad, h - pad); ctx.lineTo(pad + len, h - pad);
-    // BR
     ctx.moveTo(w - pad, h - pad - len); ctx.lineTo(w - pad, h - pad); ctx.lineTo(w - pad - len, h - pad);
     ctx.stroke();
 }
 
 function drawArtDeco(ctx, w, h) {
+    const titleText = document.getElementById('poster-title').value || 'SCAN TO CONNECT';
+    const subtitleText = document.getElementById('poster-subtitle').value || 'SCAN TO CONNECT';
+
     const gold = "#efc67c";
     const bg = "#121821";
     
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle geometric background lines
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 2;
     for(let i=0; i<=w; i+=60) {
@@ -229,11 +236,10 @@ function drawArtDeco(ctx, w, h) {
     }
 
     ctx.fillStyle = gold;
-    ctx.font = "40px 'Segoe UI Light', 'Helvetica Neue', sans-serif";
+    ctx.font = "38px 'Segoe UI Light', 'Helvetica Neue', sans-serif";
     ctx.textAlign = "center";
-    ctx.letterSpacing = "5px"; // Hack for canvas letter spacing
-    ctx.fillText("S C A N   T O   C O N N E C T", w/2, 120);
-    ctx.fillText("S C A N   T O   C O N N E C T", w/2, h - 90);
+    ctx.fillText(titleText.toUpperCase(), w/2, 120);
+    ctx.fillText(subtitleText.toUpperCase(), w/2, h - 90);
 
     ctx.strokeStyle = gold;
     ctx.lineWidth = 8;
@@ -241,13 +247,9 @@ function drawArtDeco(ctx, w, h) {
     const len = 80;
     
     ctx.beginPath();
-    // TL
     ctx.moveTo(pad + len, pad); ctx.lineTo(pad, pad); ctx.lineTo(pad, pad + len);
-    // TR
     ctx.moveTo(w - pad - len, pad); ctx.lineTo(w - pad, pad); ctx.lineTo(w - pad, pad + len);
-    // BL
     ctx.moveTo(pad, h - pad - len); ctx.lineTo(pad, h - pad); ctx.lineTo(pad + len, h - pad);
-    // BR
     ctx.moveTo(w - pad, h - pad - len); ctx.lineTo(w - pad, h - pad); ctx.lineTo(w - pad - len, h - pad);
     ctx.stroke();
 }
