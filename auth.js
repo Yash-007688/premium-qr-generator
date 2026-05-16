@@ -6,6 +6,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// ── Google OAuth ──────────────────────────────────────────────
+const googleBtn = document.getElementById('google-btn');
+if (googleBtn) {
+    googleBtn.addEventListener('click', async () => {
+        googleBtn.disabled = true;
+        googleBtn.textContent = 'Redirecting...';
+        try {
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/dashboard.html'
+                }
+            });
+            if (error) {
+                googleBtn.disabled = false;
+                googleBtn.textContent = 'Continue with Google';
+                alert('Google sign-in failed: ' + error.message);
+            }
+        } catch (err) {
+            googleBtn.disabled = false;
+            googleBtn.textContent = 'Continue with Google';
+            alert('Error: ' + err.message);
+        }
+    });
+}
+
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
 
