@@ -262,48 +262,64 @@ document.getElementById('download-btn').addEventListener('click', async () => {
     const canvas = document.getElementById('poster-canvas');
     const imageData = canvas.toDataURL('image/png');
     
-    // Set dynamic filename based on tab
     const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
     const name = activeTab === 'wifi' ? document.getElementById('ssid').value : 'Link';
     
-    // Change button text to show saving
     const btn = document.getElementById('download-btn');
     const originalText = btn.innerText;
     btn.innerText = "Saving & Downloading...";
+    btn.disabled = true;
     
     // Save to Supabase Database
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const session = sessionData?.session;
         const userId = session?.user?.id;
         
         if (userId) {
+            // Step 1: Upsert profile so FK never fails
+            await supabaseClient.from('profiles').upsert({
+                id: userId,
+                email: session.user.email,
+                full_name: session.user.user_metadata?.full_name || ''
+            }, { onConflict: 'id', ignoreDuplicates: true });
+
+            // Step 2: Insert new QR record (each download = new row)
+            let dbError = null;
             if (activeTab === 'wifi') {
-                await supabaseClient.from('wifi_qrs').insert({
+                const { error } = await supabaseClient.from('wifi_qrs').insert({
                     user_id: userId,
                     ssid: name,
                     template_name: currentTemplate,
                     qr_image_data: imageData
                 });
+                dbError = error;
             } else {
-                await supabaseClient.from('link_qrs').insert({
+                const { error } = await supabaseClient.from('link_qrs').insert({
                     user_id: userId,
                     url: document.getElementById('url').value,
                     template_name: currentTemplate,
                     qr_image_data: imageData
                 });
+                dbError = error;
+            }
+
+            if (dbError) {
+                console.error("DB Insert Error:", dbError.message);
             }
         }
     } catch (e) {
         console.error("Error saving to database:", e);
     }
     
-    // Trigger the actual file download
+    // Always download the file
     const link = document.createElement('a');
     link.download = `${name}_${currentTemplate}_QR.png`;
     link.href = imageData;
     link.click();
     
     btn.innerText = originalText;
+    btn.disabled = false;
 });
 
 // Initial generation
