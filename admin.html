@@ -88,7 +88,7 @@
     
     <nav class="dashboard-nav">
         <div class="logo">✨ QR Web Admin</div>
-        <a href="dashboard.html" class="logout-btn">Back to Dashboard</a>
+        <a href="dashboard.html?studio=1" class="logout-btn">Back to Studio</a>
     </nav>
 
     <div class="admin-container">
@@ -105,29 +105,31 @@
                         <th>Date Joined</th>
                         <th>Name</th>
                         <th>Email</th>
+                        <th>Role</th>
                         <th>User ID</th>
                     </tr>
                 </thead>
                 <tbody id="auth-table-body">
-                    <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
 
         <div class="table-section">
-            <h3>📶 Wi-Fi Hotspots</h3>
+            <h3>📶 Wi-Fi & Hotspot QR Codes</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Date</th>
                         <th>Created By</th>
+                        <th>Type</th>
                         <th>Network (SSID)</th>
                         <th>Template</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="wifi-table-body">
-                    <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+                    <tr><td colspan="6" class="empty-state">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -154,6 +156,7 @@
     <!-- Supabase CDN -->
     <script src="supabase.js"></script>
     <script src="supabaseClient.js"></script>
+    <script src="auth-utils.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

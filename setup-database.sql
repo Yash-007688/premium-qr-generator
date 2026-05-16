@@ -5,6 +5,7 @@ CREATE TABLE public.profiles (
     id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     full_name TEXT,
     email TEXT,
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -13,6 +14,7 @@ CREATE TABLE public.wifi_qrs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     ssid TEXT NOT NULL,
+    connection_type TEXT NOT NULL DEFAULT 'wifi' CHECK (connection_type IN ('wifi', 'hotspot')),
     template_name TEXT,
     qr_image_data TEXT, -- Base64 encoded image string
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -52,15 +54,34 @@ CREATE POLICY "Users can insert their own link qrs" ON public.link_qrs
 CREATE POLICY "Authenticated users can read all link qrs" ON public.link_qrs
     FOR SELECT USING (auth.role() = 'authenticated');
 
+-- 4b. Create the Hotspot QRs table (Mobile Hotspot)
+CREATE TABLE public.hotspot_qrs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    ssid TEXT NOT NULL,
+    template_name TEXT,
+    qr_image_data TEXT, -- Base64 encoded image string
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.hotspot_qrs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert their own hotspot qrs" ON public.hotspot_qrs
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Authenticated users can read all hotspot qrs" ON public.hotspot_qrs
+    FOR SELECT USING (auth.role() = 'authenticated');
+
 -- 6. Trigger to automatically sync auth.users to public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS '
 BEGIN
-  INSERT INTO public.profiles (id, full_name, email)
+  INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
     new.id, 
     new.raw_user_meta_data->>''full_name'', 
-    new.email
+    new.email,
+    ''user''
   );
   RETURN new;
 END;

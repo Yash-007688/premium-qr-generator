@@ -29,19 +29,30 @@
 
                 <!-- Tab Navigation -->
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="wifi">Wi-Fi Network</button>
+                    <button class="tab-btn active" data-tab="wifi">Wi-Fi / Hotspot</button>
                     <button class="tab-btn" data-tab="url">Website URL</button>
                 </div>
 
-                <!-- Wi-Fi Form -->
+                <!-- Wi-Fi / Hotspot Form -->
                 <div id="wifi-form" class="form-section active">
+
+                    <!-- WiFi / Hotspot type toggle -->
+                    <div class="wifi-type-toggle">
+                        <button class="wtype-btn active" id="wtype-wifi" data-wtype="wifi">
+                            📶 Wi-Fi
+                        </button>
+                        <button class="wtype-btn" id="wtype-hotspot" data-wtype="hotspot">
+                            📱 Hotspot
+                        </button>
+                    </div>
+
                     <div class="input-group">
-                        <label for="ssid">Network Name (SSID)</label>
+                        <label for="ssid" id="ssid-label">Network Name (SSID)</label>
                         <input type="text" id="ssid" placeholder="e.g. MyHomeNetwork" value="JKM_24">
                     </div>
                     <div class="input-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" placeholder="Enter network password" value="9752753462">
+                        <input type="password" id="password" placeholder="Enter password" value="9752753462">
                     </div>
                     <div class="input-group">
                         <label for="encryption">Security Type</label>
@@ -128,6 +139,7 @@
 
     <script src="supabase.js"></script>
     <script src="supabaseClient.js"></script>
+    <script src="auth-utils.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

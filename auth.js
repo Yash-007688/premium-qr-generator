@@ -2,7 +2,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
-        window.location.replace("dashboard.html");
+        await redirectByRole(session.user.id);
     }
 });
 
@@ -76,8 +76,7 @@ if (loginForm) {
                 btn.style.opacity = "1";
                 btn.disabled = false;
             } else {
-                // Success
-                window.location.href = "dashboard.html";
+                await redirectByRole(data.user.id);
             }
         } catch (err) {
             console.error("Login Exception:", err);
@@ -122,8 +121,7 @@ if (signupForm) {
                 btn.disabled = false;
             } else {
                 if (data.session) {
-                    // Auto-login worked
-                    window.location.href = "dashboard.html";
+                    await redirectByRole(data.session.user.id);
                 } else {
                     // Email confirmation required
                     showError(signupForm, "Account created! Please check your email to verify.");

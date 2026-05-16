@@ -3,6 +3,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
         window.location.href = "login.html";
+        return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const allowStudio = params.get('studio') === '1';
+    if (!allowStudio) {
+        const role = await fetchUserRole(session.user.id);
+        if (role === 'admin') {
+            window.location.replace('admin.html');
+        }
     }
 });
 
@@ -31,6 +40,45 @@ tabs.forEach(tab => {
     });
 });
 
+// Wi-Fi vs Hotspot sub-toggle (within Wi-Fi tab)
+let currentWtype = 'wifi';
+const wtypeBtns = document.querySelectorAll('.wtype-btn');
+
+function setConnectionType(wtype) {
+    currentWtype = wtype;
+    wtypeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-wtype') === wtype);
+    });
+    const ssidLabel = document.getElementById('ssid-label');
+    const ssidInput = document.getElementById('ssid');
+    const titleInput = document.getElementById('poster-title');
+    if (wtype === 'hotspot') {
+        ssidLabel.textContent = 'Hotspot Name (SSID)';
+        ssidInput.placeholder = 'e.g. MyPhone Hotspot';
+        if (titleInput.value === 'SCAN TO CONNECT' || !titleInput.dataset.userEdited) {
+            titleInput.value = 'SCAN TO JOIN HOTSPOT';
+        }
+    } else {
+        ssidLabel.textContent = 'Network Name (SSID)';
+        ssidInput.placeholder = 'e.g. MyHomeNetwork';
+        if (titleInput.value === 'SCAN TO JOIN HOTSPOT' && !titleInput.dataset.userEdited) {
+            titleInput.value = 'SCAN TO CONNECT';
+        }
+    }
+    generatePreview();
+}
+
+wtypeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        setConnectionType(btn.getAttribute('data-wtype'));
+    });
+});
+
+document.getElementById('poster-title').addEventListener('input', (e) => {
+    e.target.dataset.userEdited = 'true';
+    generatePreview();
+});
+
 // 2. Template Selection Logic
 let currentTemplate = 'minimalist';
 const templates = document.querySelectorAll('.template-option');
@@ -48,8 +96,11 @@ templates.forEach(template => {
 document.getElementById('dot-color').addEventListener('input', generatePreview);
 document.getElementById('bg-color').addEventListener('input', generatePreview);
 // Live update poster text
-document.getElementById('poster-title').addEventListener('input', generatePreview);
 document.getElementById('poster-subtitle').addEventListener('input', generatePreview);
+// Live update Wi-Fi / Hotspot fields
+document.getElementById('ssid').addEventListener('input', generatePreview);
+document.getElementById('password').addEventListener('input', generatePreview);
+document.getElementById('encryption').addEventListener('change', generatePreview);
 
 // 3. QR Code Initialization
 const qrCode = new QRCodeStyling({
@@ -74,14 +125,13 @@ async function generatePreview() {
     const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
     let qrData = '';
 
+    const escapeStr = (s) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/:/g, '\\:');
+
     if (activeTab === 'wifi') {
         const ssid = document.getElementById('ssid').value.trim();
         const password = document.getElementById('password').value;
         const encryption = document.getElementById('encryption').value;
-        
         if (!ssid) return;
-
-        const escapeStr = (s) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/:/g, '\\:');
         qrData = `WIFI:T:${encryption};S:${escapeStr(ssid)};P:${escapeStr(password)};H:false;;`;
     } else {
         qrData = document.getElementById('url').value.trim();
@@ -263,7 +313,9 @@ document.getElementById('download-btn').addEventListener('click', async () => {
     const imageData = canvas.toDataURL('image/png');
     
     const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
-    const name = activeTab === 'wifi' ? document.getElementById('ssid').value : 'Link';
+    let name = 'Link';
+    const connectionType = activeTab === 'wifi' ? currentWtype : null;
+    if (activeTab === 'wifi') name = document.getElementById('ssid').value;
     
     const btn = document.getElementById('download-btn');
     const originalText = btn.innerText;
@@ -290,6 +342,7 @@ document.getElementById('download-btn').addEventListener('click', async () => {
                 const { error } = await supabaseClient.from('wifi_qrs').insert({
                     user_id: userId,
                     ssid: name,
+                    connection_type: connectionType,
                     template_name: currentTemplate,
                     qr_image_data: imageData
                 });
@@ -314,7 +367,10 @@ document.getElementById('download-btn').addEventListener('click', async () => {
     
     // Always download the file
     const link = document.createElement('a');
-    link.download = `${name}_${currentTemplate}_QR.png`;
+    const typeSuffix = connectionType === 'hotspot' ? 'Hotspot' : connectionType === 'wifi' ? 'WiFi' : '';
+    link.download = typeSuffix
+        ? `${name}_${currentTemplate}_${typeSuffix}_QR.png`
+        : `${name}_${currentTemplate}_QR.png`;
     link.href = imageData;
     link.click();
     
