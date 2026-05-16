@@ -1,0 +1,8 @@
+{
+  "name": "premium-qr-generator",
+  "private": true,
+  "scripts": {
+    "build:config": "node scripts/generate-env-config.js",
+    "check:google": "node scripts/check-google-env.js"
+  }
+}
