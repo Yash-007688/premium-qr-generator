@@ -20,9 +20,27 @@ window.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     await ensureUserProfile(session);
+
+    // Fetch user profile status
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('role, is_banned')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+    if (profile?.is_banned) {
+        await supabaseClient.auth.signOut();
+        window.location.replace('banned.html');
+        return;
+    }
+
+    const role = profile?.role || 'user';
+
+    // Inject the Unified Glassmorphic Profile Dropdown
+    await injectUnifiedDropdown('.dashboard-nav');
+
     const allowStudio = params.get('studio') === '1';
     if (!allowStudio) {
-        const role = await fetchUserRole(session.user.id);
         if (role === 'admin') {
             window.location.replace('admin.html');
         }

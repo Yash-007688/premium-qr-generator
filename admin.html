@@ -6,6 +6,10 @@
     <title>QR Web | Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Chart.js CDN for robust graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         .admin-container {
             max-width: 1200px;
@@ -31,8 +35,9 @@
         }
 
         .table-section h3 {
-            margin-bottom: 1rem;
+            margin-bottom: 1.25rem;
             color: var(--primary);
+            font-size: 1.25rem;
         }
 
         table {
@@ -82,6 +87,237 @@
             padding: 2rem;
             color: var(--text-muted);
         }
+
+        /* === PREMIUM ANALYTICS STYLING === */
+        .analytics-section {
+            margin-bottom: 3rem;
+        }
+
+        .analytics-section h3 {
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .stat-icon {
+            font-size: 1.75rem;
+            padding: 0.75rem;
+            background: rgba(99, 102, 241, 0.12);
+            border-radius: 0.75rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: white;
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* === GRAPH SORTING & FILTERING === */
+        .graph-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .graph-controls-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .controls-inner {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .control-group select {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.4rem;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .control-group select:focus {
+            border-color: var(--primary);
+        }
+
+        /* Charts panel */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 900px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-wrapper {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            backdrop-filter: blur(8px);
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-wrapper h4 {
+            margin-bottom: 1.25rem;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+        }
+
+        .chart-canvas-container {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 250px;
+        }
+
+        /* === MODERATOR CONTROLS === */
+        .mod-btn {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 0.3rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 0.4rem;
+        }
+
+        .mod-btn-danger {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .mod-btn-danger:hover {
+            background-color: #ef4444;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .mod-btn-warning {
+            background-color: rgba(249, 115, 22, 0.15);
+            color: #fb923c;
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .mod-btn-warning:hover {
+            background-color: #f97316;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .mod-btn-success {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .mod-btn-success:hover {
+            background-color: #22c55e;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-active {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+        }
+
+        .badge-banned {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
     </style>
 </head>
 <body class="landing-body">
@@ -97,8 +333,82 @@
             <button id="refresh-btn" class="action-btn">Refresh Data</button>
         </div>
 
+        <!-- 📊 SYSTEM ANALYTICS SECTION -->
+        <div class="analytics-section">
+            <h3>📊 Analytics Overview</h3>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-icon">👥</span>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-users">0</span>
+                        <span class="stat-label">Total Users</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">📶</span>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-wifi-qrs">0</span>
+                        <span class="stat-label">Wi-Fi QRs</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">📱</span>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-hotspot-qrs">0</span>
+                        <span class="stat-label">Hotspot QRs</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">🔗</span>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-link-qrs">0</span>
+                        <span class="stat-label">Link QRs</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sorting & Range Filtering Controls -->
+            <div class="graph-controls">
+                <span class="graph-controls-title">Interactive Chart Controls</span>
+                <div class="controls-inner">
+                    <div class="control-group">
+                        <label for="graph-time-range">Range:</label>
+                        <select id="graph-time-range">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="graph-sort-order">Sort Chronology:</label>
+                        <select id="graph-sort-order">
+                            <option value="asc" selected>Oldest to Newest</option>
+                            <option value="desc">Newest to Oldest</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-wrapper">
+                    <h4>📈 QR Codes Generation Activity</h4>
+                    <div class="chart-canvas-container">
+                        <canvas id="qr-generation-chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <h4>🍩 QR Code Types Distribution</h4>
+                    <div class="chart-canvas-container">
+                        <canvas id="qr-distribution-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 👥 USER MANAGEMENT TABLE -->
         <div class="table-section">
-            <h3>👥 Registered Users (Auth)</h3>
+            <h3>👥 Registered Users</h3>
             <table>
                 <thead>
                     <tr>
@@ -106,15 +416,17 @@
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>User ID</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="auth-table-body">
-                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                    <tr><td colspan="6" class="empty-state">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
 
+        <!-- 📶 WI-FI & HOTSPOT MANAGEMENT TABLE -->
         <div class="table-section">
             <h3>📶 Wi-Fi & Hotspot QR Codes</h3>
             <table>
@@ -134,6 +446,7 @@
             </table>
         </div>
 
+        <!-- 🔗 LINKS & URLS TABLE -->
         <div class="table-section">
             <h3>🔗 Links & URLs</h3>
             <table>
@@ -147,13 +460,60 @@
                     </tr>
                 </thead>
                 <tbody id="link-table-body">
-                    <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Supabase CDN -->
+    <!-- 🚫 BAN DETAILS MODAL OVERLAY -->
+    <div class="modal-overlay" id="ban-modal-overlay">
+        <div class="ban-modal">
+            <h3>🚫 Suspend User Account</h3>
+            
+            <div class="modal-group">
+                <label for="ban-reason-select">Select Ban Reason</label>
+                <select id="ban-reason-select" class="form-input" style="background-color: var(--bg-color); border:1px solid var(--border-color); color:var(--text-main); cursor:pointer;">
+                    <option value="Spam / Excessive QR Generation">Spam / Excessive QR Generation</option>
+                    <option value="Generating Malicious Links / SSID">Generating Malicious Links / SSID</option>
+                    <option value="Abusive / Inappropriate Content">Abusive / Inappropriate Content</option>
+                    <option value="Violation of Service Terms">Violation of Service Terms</option>
+                    <option value="CUSTOM">Custom Reason...</option>
+                </select>
+            </div>
+            
+            <div class="modal-group" id="custom-reason-container" style="display: none;">
+                <label for="ban-reason-custom">Write Custom Reason</label>
+                <textarea id="ban-reason-custom" class="form-input" style="background-color: var(--bg-color); border:1px solid var(--border-color); color:var(--text-main); font-family:inherit; min-height:80px; resize:vertical;" placeholder="Describe why this account is suspended..."></textarea>
+            </div>
+            
+            <div class="modal-group">
+                <label>Ban Duration Type</label>
+                <div class="modal-radio-group">
+                    <label class="modal-radio-option">
+                        <input type="radio" name="ban-duration-type" value="permanent" checked>
+                        Permanent Ban
+                    </label>
+                    <label class="modal-radio-option">
+                        <input type="radio" name="ban-duration-type" value="temporary">
+                        Temporary Ban
+                    </label>
+                </div>
+            </div>
+            
+            <div class="modal-group" id="temporary-duration-container" style="display: none;">
+                <label for="ban-duration-days">Duration (Days)</label>
+                <input type="number" id="ban-duration-days" class="form-input" style="background-color: var(--bg-color); border:1px solid var(--border-color); color:var(--text-main);" min="1" max="365" value="7">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="action-btn" style="background-color: transparent; border:1px solid var(--border-color); color:var(--text-main);" id="ban-cancel-btn">Cancel</button>
+                <button class="action-btn" style="background-color: #ef4444;" id="ban-confirm-btn">Confirm Ban</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase CDN & Client Utilities -->
     <script src="env.config.example.js"></script>
     <script src="env.config.js"></script>
     <script src="supabase.js"></script>

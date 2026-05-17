@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Web | My Profile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="landing-body">
+    
+    <!-- Unified Dynamic Navigation bar -->
+    <nav class="dashboard-nav">
+        <div class="logo">✨ QR Web Profile</div>
+        <!-- Unified Dropdown will be injected here dynamically -->
+    </nav>
+
+    <!-- Main Profile Content Layout -->
+    <div class="profile-content">
+        
+        <!-- Left Section: Profile Settings & Info Card -->
+        <div class="profile-card">
+            <h3>👤 Account Settings</h3>
+            
+            <div class="profile-avatar-large" id="profile-avatar-icon">
+                U
+            </div>
+            
+            <form id="profile-form" class="auth-form" style="padding:0; margin:0; box-shadow:none; background:transparent;">
+                <div class="profile-info-group">
+                    <label class="profile-info-label" for="profile-name-input">Full Name</label>
+                    <input type="text" id="profile-name-input" class="form-input" style="background-color: rgba(15, 23, 42, 0.4);" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="profile-info-group" style="margin-top: 1rem;">
+                    <label class="profile-info-label">Email Address</label>
+                    <div class="profile-info-value-static" id="profile-email-static">loading...</div>
+                </div>
+                
+                <div class="profile-info-group" style="margin-top: 1rem;">
+                    <label class="profile-info-label">Account Role</label>
+                    <div class="profile-info-value-static" style="font-weight: 600; text-transform: uppercase;" id="profile-role-static">loading...</div>
+                </div>
+
+                <div class="profile-info-group" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+                    <label class="profile-info-label">Member Since</label>
+                    <div class="profile-info-value-static" id="profile-joined-static">loading...</div>
+                </div>
+                
+                <button type="submit" id="update-profile-btn" class="form-btn" style="width: 100%; font-weight: 600;">
+                    Update Profile Details
+                </button>
+            </form>
+        </div>
+        
+        <!-- Right Section: Personal Posters History -->
+        <div class="profile-card">
+            <h3>🎨 My Saved QR Posters</h3>
+            
+            <div id="history-loading" class="empty-state">Loading your posters history...</div>
+            <div id="history-empty" class="empty-state" style="display: none;">You haven't generated any QR posters yet. Go to the Creator Studio to make one!</div>
+            
+            <div class="history-cards-container" id="history-grid" style="display: none;">
+                <!-- Cards will be dynamically loaded here by profile.js -->
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Script imports in standard execution sequence -->
+    <script src="env.config.example.js"></script>
+    <script src="env.config.js"></script>
+    <script src="supabase.js"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="auth-utils.js"></script>
+    <script src="profile.js"></script>
+</body>
+</html>

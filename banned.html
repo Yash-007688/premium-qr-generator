@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Suspended</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body class="landing-body">
+    
+    <div class="suspended-container">
+        <span class="suspended-icon">🚫</span>
+        <h2>Account Suspended</h2>
+        
+        <div id="banned-type" style="font-size: 0.95rem; text-transform: uppercase; margin-bottom: -0.5rem;">
+            <!-- Rendered by JS -->
+        </div>
+
+        <p class="suspended-text" style="margin: 0.5rem 0;">
+            Reason: <strong id="banned-reason" style="color: white;">--</strong>
+        </p>
+
+        <p class="suspended-text" id="banned-details" style="font-size: 0.9rem; background: rgba(0,0,0,0.25); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); line-height: 1.5;">
+            <!-- Rendered by JS -->
+        </p>
+
+        <p class="suspended-text" style="font-size: 0.85rem; margin-top: 0.25rem;">
+            If you believe this suspension is an error, please reach out to our administration team for appeal.
+        </p>
+
+        <div style="height: 1px; background-color: var(--border-color); margin: 0.5rem 0;"></div>
+        
+        <div class="suspended-footer">
+            <a href="index.html">Return to Home Page</a>
+        </div>
+    </div>
+
+    <!-- Script imports to force session cleanup in background -->
+    <script src="env.config.example.js"></script>
+    <script src="env.config.js"></script>
+    <script src="supabase.js"></script>
+    <script src="supabaseClient.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Parse parameters from redirect URL
+            const params = new URLSearchParams(window.location.search);
+            const reason = decodeURIComponent(params.get('reason') || 'No reason specified');
+            const type = decodeURIComponent(params.get('type') || 'permanent');
+            const until = params.get('until');
+
+            // Render reason
+            document.getElementById('banned-reason').innerText = reason;
+
+            // Render type and duration
+            const typeEl = document.getElementById('banned-type');
+            const detailsEl = document.getElementById('banned-details');
+
+            if (type === 'temporary' && until) {
+                const expiry = new Date(until);
+                typeEl.innerHTML = `<span style="color: #f97316; font-weight: 600; letter-spacing: 0.05em;">TEMPORARY SUSPENSION</span>`;
+                
+                // Active countdown ticker
+                const updateCountdown = () => {
+                    const diffMs = expiry - new Date();
+                    if (diffMs <= 0) {
+                        detailsEl.innerHTML = `<span style="color: #4ade80; font-weight:600;">Your ban has expired! Please reload the page to sign back in.</span>`;
+                        return;
+                    }
+                    
+                    const totalSecs = Math.floor(diffMs / 1000);
+                    const days = Math.floor(totalSecs / 86400);
+                    const hours = Math.floor((totalSecs % 86400) / 3600);
+                    const minutes = Math.floor((totalSecs % 3600) / 60);
+                    const seconds = totalSecs % 60;
+                    
+                    detailsEl.innerHTML = `Suspension lifts in: <strong style="color:white; font-size:1.05rem;">${days}d ${hours}h ${minutes}m ${seconds}s</strong><br>` +
+                                           `<span style="font-size: 0.78rem; color: var(--text-muted); display:inline-block; margin-top:0.4rem;">Lift date: ${expiry.toLocaleString()}</span>`;
+                };
+                
+                updateCountdown();
+                setInterval(updateCountdown, 1000);
+            } else {
+                typeEl.innerHTML = `<span style="color: #ef4444; font-weight: 600; letter-spacing: 0.05em;">PERMANENT SUSPENSION</span>`;
+                detailsEl.innerText = "This suspension is permanent. Access to this platform will not be restored automatically.";
+            }
+
+            try {
+                // Instantly clean up local session credentials
+                await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.error("Token revocation failed:", err);
+            }
+        });
+    </script>
+</body>
+</html>

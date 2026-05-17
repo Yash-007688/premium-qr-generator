@@ -1,54 +1,191 @@
+// Global Chart instances to avoid overlaps when redrawing
+let qrActivityChart = null;
+let qrTypeChart = null;
+
+// Store fetched database results globally to support live filtering/sorting without re-fetching
+let globalAuthData = [];
+let globalWifiData = [];
+let globalLinkData = [];
+
+// Keep track of user being banned
+let activeBanUserId = null;
+
 // Protect Admin Page (admins only)
 window.addEventListener('DOMContentLoaded', async () => {
     const isAdmin = await requireAdmin();
     if (!isAdmin) return;
+
+    // Inject the Unified Glassmorphic Profile Dropdown
+    await injectUnifiedDropdown('.dashboard-nav');
+    
+    // Bind controls
+    document.getElementById('refresh-btn').addEventListener('click', fetchData);
+    document.getElementById('graph-time-range').addEventListener('change', processAndDrawCharts);
+    document.getElementById('graph-sort-order').addEventListener('change', processAndDrawCharts);
+
+    // Bind Advanced Ban Modal Interactivity
+    const modalOverlay = document.getElementById('ban-modal-overlay');
+    const reasonSelect = document.getElementById('ban-reason-select');
+    const customReasonContainer = document.getElementById('custom-reason-container');
+    const customReasonTextarea = document.getElementById('ban-reason-custom');
+    const durationRadioGroup = document.getElementsByName('ban-duration-type');
+    const durationDaysContainer = document.getElementById('temporary-duration-container');
+    const durationDaysInput = document.getElementById('ban-duration-days');
+    const cancelBtn = document.getElementById('ban-cancel-btn');
+    const confirmBtn = document.getElementById('ban-confirm-btn');
+
+    // Show custom textarea conditionally
+    reasonSelect.addEventListener('change', () => {
+        if (reasonSelect.value === 'CUSTOM') {
+            customReasonContainer.style.display = 'flex';
+        } else {
+            customReasonContainer.style.display = 'none';
+        }
+    });
+
+    // Show temporary duration days input conditionally
+    durationRadioGroup.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'temporary') {
+                durationDaysContainer.style.display = 'flex';
+            } else {
+                durationDaysContainer.style.display = 'none';
+            }
+        });
+    });
+
+    // Close modal on Cancel
+    cancelBtn.addEventListener('click', () => {
+        modalOverlay.classList.remove('show');
+        activeBanUserId = null;
+    });
+
+    // Handle Confirm Ban Submit
+    confirmBtn.addEventListener('click', async () => {
+        if (!activeBanUserId) return;
+
+        let finalReason = reasonSelect.value;
+        if (finalReason === 'CUSTOM') {
+            finalReason = customReasonTextarea.value.trim() || 'Custom suspension';
+        }
+
+        let isTemporary = false;
+        durationRadioGroup.forEach(radio => {
+            if (radio.checked && radio.value === 'temporary') isTemporary = true;
+        });
+
+        let bannedUntil = null;
+        let banType = 'permanent';
+
+        if (isTemporary) {
+            banType = 'temporary';
+            const days = parseInt(durationDaysInput.value, 10) || 7;
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + days);
+            bannedUntil = expiryDate.toISOString();
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = 'Suspending...';
+
+        try {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({
+                    is_banned: true,
+                    ban_reason: finalReason,
+                    ban_type: banType,
+                    banned_until: bannedUntil
+                })
+                .eq('id', activeBanUserId);
+
+            if (error) throw error;
+
+            alert('User profile has been successfully suspended.');
+            modalOverlay.classList.remove('show');
+            activeBanUserId = null;
+            fetchData();
+        } catch (err) {
+            console.error("Failed to execute suspend query:", err);
+            alert(`Error executing ban action: ${err.message}`);
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = 'Confirm Ban';
+        }
+    });
+
     fetchData();
 });
 
-document.getElementById('refresh-btn').addEventListener('click', fetchData);
-
 async function fetchData() {
-    // Show loading states
-    document.getElementById('auth-table-body').innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
+    // Show loading states in tables
+    document.getElementById('auth-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
     document.getElementById('wifi-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
-    document.getElementById('link-table-body').innerHTML = '<tr><td colspan="4" class="empty-state">Loading...</td></tr>';
+    document.getElementById('link-table-body').innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
 
     try {
-        // Fetch Profiles (Auth) Data
+        // 1. Fetch Profiles (Auth) Data
         const { data: authData, error: authError } = await supabaseClient
             .from('profiles')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (authError) console.error(authError);
+        if (authError) throw authError;
+        globalAuthData = authData || [];
 
-        // Fetch Wi-Fi Data
+        // 2. Fetch Wi-Fi & Hotspot Data
         const { data: wifiData, error: wifiError } = await supabaseClient
             .from('wifi_qrs')
             .select('*, profiles(full_name, email)')
             .order('created_at', { ascending: false });
 
-        if (wifiError) console.error(wifiError);
+        if (wifiError) throw wifiError;
+        globalWifiData = wifiData || [];
 
-        // Fetch Link Data
+        // 3. Fetch Link Data
         const { data: linkData, error: linkError } = await supabaseClient
             .from('link_qrs')
             .select('*, profiles(full_name, email)')
             .order('created_at', { ascending: false });
 
-        if (linkError) console.error(linkError);
+        if (linkError) throw linkError;
+        globalLinkData = linkData || [];
 
-        renderAuthTable(authData);
-        renderWifiTable(wifiData);
-        renderLinkTable(linkData);
+        // Update Overview Cards
+        updateMetricCards();
+
+        // Render Tables
+        renderAuthTable(globalAuthData);
+        renderWifiTable(globalWifiData);
+        renderLinkTable(globalLinkData);
+
+        // Process and Draw Analytics Charts
+        processAndDrawCharts();
 
     } catch (e) {
         console.error("Error fetching data:", e);
-        const errMsg = '<tr><td colspan="4" class="empty-state" style="color:#ef4444;">Please run the SQL script in Supabase first to create the tables.</td></tr>';
+        const errMsg = `<tr><td colspan="6" class="empty-state" style="color:#ef4444; font-weight:600;">
+            Database Error: ${e.message || "Please run the migration SQL script in Supabase first."}
+        </td></tr>`;
         document.getElementById('auth-table-body').innerHTML = errMsg;
         document.getElementById('wifi-table-body').innerHTML = errMsg;
         document.getElementById('link-table-body').innerHTML = errMsg;
     }
+}
+
+function updateMetricCards() {
+    // Total Users
+    document.getElementById('stat-total-users').innerText = globalAuthData.length;
+    
+    // Wi-Fi vs Hotspot QRs (both live inside wifi_qrs table)
+    const wifiCount = globalWifiData.filter(row => row.connection_type !== 'hotspot').length;
+    const hotspotCount = globalWifiData.filter(row => row.connection_type === 'hotspot').length;
+    
+    document.getElementById('stat-wifi-qrs').innerText = wifiCount;
+    document.getElementById('stat-hotspot-qrs').innerText = hotspotCount;
+    
+    // Total Link QRs
+    document.getElementById('stat-link-qrs').innerText = globalLinkData.length;
 }
 
 function formatDate(isoString) {
@@ -57,10 +194,154 @@ function formatDate(isoString) {
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 }
 
+// === GRAPH PROCESSING AND CHART.JS RENDERING ===
+function processAndDrawCharts() {
+    const rangeVal = document.getElementById('graph-time-range').value;
+    const sortVal = document.getElementById('graph-sort-order').value;
+
+    const now = new Date();
+    let thresholdDate = null;
+    if (rangeVal === '7') {
+        thresholdDate = new Date();
+        thresholdDate.setDate(now.getDate() - 7);
+    } else if (rangeVal === '30') {
+        thresholdDate = new Date();
+        thresholdDate.setDate(now.getDate() - 30);
+    }
+
+    // 1. Process QR Generation Activity Over Time
+    const activityMap = {};
+
+    const processQREntry = (row) => {
+        const createdDate = new Date(row.created_at);
+        if (thresholdDate && createdDate < thresholdDate) return;
+        
+        // Group by Date String: YYYY-MM-DD
+        const dateKey = createdDate.toISOString().split('T')[0];
+        activityMap[dateKey] = (activityMap[dateKey] || 0) + 1;
+    };
+
+    globalWifiData.forEach(processQREntry);
+    globalLinkData.forEach(processQREntry);
+
+    // Get sorted keys
+    let dates = Object.keys(activityMap);
+    dates.sort((a, b) => {
+        const d1 = new Date(a);
+        const d2 = new Date(b);
+        return sortVal === 'asc' ? d1 - d2 : d2 - d1;
+    });
+
+    // If no data exists, provide fallback
+    if (dates.length === 0) {
+        dates = ['No Data'];
+        activityMap['No Data'] = 0;
+    }
+
+    const activityCounts = dates.map(d => activityMap[d]);
+    // Make dates more readable on chart labels
+    const formattedLabels = dates.map(d => {
+        if (d === 'No Data') return d;
+        const parts = d.split('-');
+        const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        return dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    });
+
+    // 2. Process QR Type Distribution
+    let wifiCount = 0;
+    let hotspotCount = 0;
+    let linkCount = 0;
+
+    globalWifiData.forEach(row => {
+        const createdDate = new Date(row.created_at);
+        if (thresholdDate && createdDate < thresholdDate) return;
+        if (row.connection_type === 'hotspot') {
+            hotspotCount++;
+        } else {
+            wifiCount++;
+        }
+    });
+
+    globalLinkData.forEach(row => {
+        const createdDate = new Date(row.created_at);
+        if (thresholdDate && createdDate < thresholdDate) return;
+        linkCount++;
+    });
+
+    // Destroy previous Chart instances to prevent canvas artifacts
+    if (qrActivityChart) qrActivityChart.destroy();
+    if (qrTypeChart) qrTypeChart.destroy();
+
+    // Chart A: Activity Over Time (glowing line chart)
+    const ctxA = document.getElementById('qr-generation-chart').getContext('2d');
+    qrActivityChart = new Chart(ctxA, {
+        type: 'line',
+        data: {
+            labels: formattedLabels,
+            datasets: [{
+                label: 'QR Posters Generated',
+                data: activityCounts,
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#818cf8',
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
+                }
+            }
+        }
+    });
+
+    // Chart B: QR Code Types Distribution (doughnut chart)
+    const ctxB = document.getElementById('qr-distribution-chart').getContext('2d');
+    qrTypeChart = new Chart(ctxB, {
+        type: 'doughnut',
+        data: {
+            labels: ['📶 Wi-Fi', '📱 Hotspot', '🔗 Link'],
+            datasets: [{
+                data: [wifiCount, hotspotCount, linkCount],
+                backgroundColor: ['#6366f1', '#f97316', '#a855f7'],
+                borderColor: '#1e293b',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#94a3b8', font: { size: 11, weight: '500' } }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+}
+
+// === TABLE RENDERING ===
+
 function renderAuthTable(data) {
     const tbody = document.getElementById('auth-table-body');
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users registered yet. (Or table missing)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users registered yet.</td></tr>';
         return;
     }
 
@@ -70,12 +351,26 @@ function renderAuthTable(data) {
         const role = row.role || 'user';
         const roleLabel = role === 'admin' ? 'Admin' : 'User';
         const roleColor = role === 'admin' ? '#f97316' : 'var(--text-muted)';
+        
+        // Banned state UI styling
+        const statusBadge = row.is_banned 
+            ? `<span class="badge badge-banned">Banned</span>` 
+            : `<span class="badge badge-active">Active</span>`;
+
+        // Ban button text and action
+        const banActionText = row.is_banned ? 'Unban' : 'Ban';
+        const banActionClass = row.is_banned ? 'mod-btn-success' : 'mod-btn-warning';
+
         tr.innerHTML = `
             <td>${formatDate(row.created_at)}</td>
             <td><strong>${row.full_name || 'N/A'}</strong></td>
             <td><a href="mailto:${row.email}" style="color:var(--primary); text-decoration:none;">${row.email}</a></td>
             <td><span style="color:${roleColor}; font-weight:600; text-transform:capitalize;">${roleLabel}</span></td>
-            <td><span style="font-family:monospace; font-size:0.8rem; color:var(--text-muted);">${row.id}</span></td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="mod-btn ${banActionClass}" onclick="toggleBanUser('${row.id}', ${row.is_banned})">${banActionText}</button>
+                <button class="mod-btn mod-btn-danger" onclick="deleteUser('${row.id}')">Delete</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -84,7 +379,7 @@ function renderAuthTable(data) {
 function renderWifiTable(data) {
     const tbody = document.getElementById('wifi-table-body');
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No Wi-Fi or Hotspot QR codes generated yet. (Or table missing)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No Wi-Fi or Hotspot QR codes generated yet.</td></tr>';
         return;
     }
 
@@ -95,6 +390,7 @@ function renderWifiTable(data) {
         const connType = row.connection_type || 'wifi';
         const typeLabel = connType === 'hotspot' ? '📱 Hotspot' : '📶 Wi-Fi';
         const typeColor = connType === 'hotspot' ? '#f97316' : 'var(--primary)';
+        
         tr.innerHTML = `
             <td>${formatDate(row.created_at)}</td>
             <td><span style="color:var(--text-muted); font-size:0.85rem;">${creatorName}</span></td>
@@ -102,7 +398,7 @@ function renderWifiTable(data) {
             <td><strong>${row.ssid}</strong></td>
             <td><span style="text-transform: capitalize;">${row.template_name}</span></td>
             <td>
-                <button class="action-btn" onclick="downloadImage('${row.qr_image_data}', '${row.ssid}_${row.template_name}')">Download Image</button>
+                <button class="mod-btn mod-btn-danger" onclick="deleteWifiQR('${row.id}')">Delete</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -112,7 +408,7 @@ function renderWifiTable(data) {
 function renderLinkTable(data) {
     const tbody = document.getElementById('link-table-body');
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No Link QR codes generated yet. (Or table missing)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No Link QR codes generated yet.</td></tr>';
         return;
     }
 
@@ -120,23 +416,121 @@ function renderLinkTable(data) {
     data.forEach(row => {
         const tr = document.createElement('tr');
         const creatorName = row.profiles?.full_name || row.profiles?.email || 'Unknown User';
+        
         tr.innerHTML = `
             <td>${formatDate(row.created_at)}</td>
             <td><span style="color:var(--text-muted); font-size:0.85rem;">${creatorName}</span></td>
             <td><a href="${row.url}" target="_blank" style="color:var(--primary);">${row.url}</a></td>
             <td><span style="text-transform: capitalize;">${row.template_name}</span></td>
             <td>
-                <button class="action-btn" onclick="downloadImage('${row.qr_image_data}', 'Link_${row.template_name}')">Download Image</button>
+                <button class="mod-btn mod-btn-danger" onclick="deleteLinkQR('${row.id}')">Delete</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// Make globally available for inline onclick attributes
-window.downloadImage = function(base64Data, filename) {
-    const link = document.createElement('a');
-    link.download = `${filename}_Admin_DL.png`;
-    link.href = base64Data;
-    link.click();
+// === MODERATOR ACTIONS IMPLEMENTATION ===
+
+window.toggleBanUser = async function(userId, currentBannedState) {
+    if (currentBannedState) {
+        // UNBAN: Restores full login access
+        if (!confirm('Are you sure you want to UNBAN this user and restore their login privileges?')) return;
+
+        try {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({
+                    is_banned: false,
+                    ban_reason: null,
+                    ban_type: null,
+                    banned_until: null
+                })
+                .eq('id', userId);
+
+            if (error) throw error;
+
+            alert('User successfully unbanned.');
+            fetchData();
+        } catch (e) {
+            console.error("Failed to lift ban details:", e);
+            alert(`Error: ${e.message}`);
+        }
+    } else {
+        // BAN: Opens detailed modal
+        activeBanUserId = userId;
+
+        // Reset inputs to default values
+        document.getElementById('ban-reason-select').value = 'Spam / Excessive QR Generation';
+        document.getElementById('custom-reason-container').style.display = 'none';
+        document.getElementById('ban-reason-custom').value = '';
+
+        const radios = document.getElementsByName('ban-duration-type');
+        radios[0].checked = true; // permanent
+        document.getElementById('temporary-duration-container').style.display = 'none';
+        document.getElementById('ban-duration-days').value = '7';
+
+        document.getElementById('ban-modal-overlay').classList.add('show');
+    }
+};
+
+window.deleteUser = async function(userId) {
+    const confirmMessage = `⚠️ CRITICAL ACTION ⚠️\n\n` + 
+                           `Are you absolutely sure you want to DELETE this user?\n\n` + 
+                           `Deleting their account is permanent and will CASCADE delete all their generated Wi-Fi and Link QR codes!`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        alert('User profile and all associated QR codes have been deleted.');
+        fetchData();
+    } catch (e) {
+        console.error("Failed to delete user:", e);
+        alert(`Error executing delete action: ${e.message}`);
+    }
+};
+
+window.deleteWifiQR = async function(qrId) {
+    if (!confirm('Are you sure you want to delete this Wi-Fi/Hotspot QR code poster?')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('wifi_qrs')
+            .delete()
+            .eq('id', qrId);
+
+        if (error) throw error;
+
+        alert('Wi-Fi QR record successfully deleted.');
+        fetchData();
+    } catch (e) {
+        console.error("Failed to delete Wi-Fi QR record:", e);
+        alert(`Error executing delete action: ${e.message}`);
+    }
+};
+
+window.deleteLinkQR = async function(qrId) {
+    if (!confirm('Are you sure you want to delete this Link/URL QR code poster?')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('link_qrs')
+            .delete()
+            .eq('id', qrId);
+
+        if (error) throw error;
+
+        alert('Link QR record successfully deleted.');
+        fetchData();
+    } catch (e) {
+        console.error("Failed to delete Link QR record:", e);
+        alert(`Error executing delete action: ${e.message}`);
+    }
 };
