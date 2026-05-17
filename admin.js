@@ -30,7 +30,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const customReasonTextarea = document.getElementById('ban-reason-custom');
     const durationRadioGroup = document.getElementsByName('ban-duration-type');
     const durationDaysContainer = document.getElementById('temporary-duration-container');
-    const durationDaysInput = document.getElementById('ban-duration-days');
+    const expiryDatetimeInput = document.getElementById('ban-expiry-datetime');
     const cancelBtn = document.getElementById('ban-cancel-btn');
     const confirmBtn = document.getElementById('ban-confirm-btn');
 
@@ -79,10 +79,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         if (isTemporary) {
             banType = 'temporary';
-            const days = parseInt(durationDaysInput.value, 10) || 7;
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + days);
-            bannedUntil = expiryDate.toISOString();
+            const datetimeVal = expiryDatetimeInput.value;
+            if (datetimeVal) {
+                bannedUntil = new Date(datetimeVal).toISOString();
+            } else {
+                const fallback = new Date();
+                fallback.setHours(fallback.getHours() + 1);
+                bannedUntil = fallback.toISOString();
+            }
         }
 
         confirmBtn.disabled = true;
@@ -468,7 +472,13 @@ window.toggleBanUser = async function(userId, currentBannedState) {
         const radios = document.getElementsByName('ban-duration-type');
         radios[0].checked = true; // permanent
         document.getElementById('temporary-duration-container').style.display = 'none';
-        document.getElementById('ban-duration-days').value = '7';
+        
+        // Pre-fill datetime-local picker with exactly +1 Hour from current time in local offset format
+        const defaultExpiry = new Date();
+        defaultExpiry.setHours(defaultExpiry.getHours() + 1);
+        const tzOffset = defaultExpiry.getTimezoneOffset() * 60000;
+        const localISO = (new Date(defaultExpiry - tzOffset)).toISOString().slice(0, 16);
+        document.getElementById('ban-expiry-datetime').value = localISO;
 
         document.getElementById('ban-modal-overlay').classList.add('show');
     }

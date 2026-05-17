@@ -502,8 +502,9 @@
             </div>
             
             <div class="modal-group" id="temporary-duration-container" style="display: none;">
-                <label for="ban-duration-days">Duration (Days)</label>
-                <input type="number" id="ban-duration-days" class="form-input" style="background-color: var(--bg-color); border:1px solid var(--border-color); color:var(--text-main);" min="1" max="365" value="7">
+                <label for="ban-expiry-datetime">Set Unban Date & Time</label>
+                <input type="datetime-local" id="ban-expiry-datetime" class="form-input" style="background-color: var(--bg-color); border:1px solid var(--border-color); color:var(--text-main);">
+                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Specify the exact date and time (Day, Month, Year, Hour, Minute) when the user will be automatically unbanned.</p>
             </div>
             
             <div class="modal-actions">
