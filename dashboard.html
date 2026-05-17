@@ -7,6 +7,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="qr-code-styling.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Pulse Animation for Active Indicator */
+        @keyframes pulseGreen {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+    </style>
 </head>
 <body>
 
@@ -15,16 +23,23 @@
         <!-- Top Navigation -->
         <nav class="dashboard-nav">
             <div class="logo">✨ QR Web Dashboard</div>
-            <a href="index.html" class="logout-btn">Log Out</a>
+            <!-- Unified Dropdown injected by auth-utils.js -->
         </nav>
 
         <!-- Main Workspace -->
         <div class="dashboard-content">
             <!-- Controls Panel -->
             <aside class="controls-panel">
-                <div class="header">
-                    <div class="logo" style="font-size:1.2rem;">Studio</div>
-                    <p>Configure your poster</p>
+                <!-- Premium Console Header -->
+                <div class="header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div class="logo" style="font-size:1.15rem; font-weight:700; background:linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:1px; text-transform:uppercase;">Studio Lab</div>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">Configure your poster</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); padding: 0.35rem 0.65rem; border-radius: 2rem;">
+                        <span style="display: inline-block; width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%; animation: pulseGreen 2s infinite;"></span>
+                        <span style="font-size: 0.65rem; color: #4ade80; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">ACTIVE</span>
+                    </div>
                 </div>
 
                 <!-- Tab Navigation -->
@@ -48,15 +63,15 @@
 
                     <div class="input-group">
                         <label for="ssid" id="ssid-label">Network Name (SSID)</label>
-                        <input type="text" id="ssid" placeholder="e.g. MyHomeNetwork" value="JKM_24">
+                        <input type="text" id="ssid" class="form-input" placeholder="e.g. MyHomeNetwork" value="JKM_24">
                     </div>
                     <div class="input-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" placeholder="Enter password" value="9752753462">
+                        <input type="password" id="password" class="form-input" placeholder="Enter password" value="9752753462">
                     </div>
                     <div class="input-group">
                         <label for="encryption">Security Type</label>
-                        <select id="encryption">
+                        <select id="encryption" class="form-input">
                             <option value="WPA" selected>WPA/WPA2/WPA3</option>
                             <option value="WEP">WEP</option>
                             <option value="nopass">None</option>
@@ -68,7 +83,7 @@
                 <div id="url-form" class="form-section">
                     <div class="input-group">
                         <label for="url">Website URL</label>
-                        <input type="url" id="url" placeholder="https://example.com" value="https://google.com">
+                        <input type="url" id="url" class="form-input" placeholder="https://example.com" value="https://google.com">
                     </div>
                 </div>
 
@@ -110,27 +125,30 @@
                 <div class="section-title">Poster Text</div>
                 <div class="input-group">
                     <label for="poster-title">Top Title</label>
-                    <input type="text" id="poster-title" placeholder="e.g. SCAN TO CONNECT" value="SCAN TO CONNECT" maxlength="30">
+                    <input type="text" id="poster-title" class="form-input" placeholder="e.g. SCAN TO CONNECT" value="SCAN TO CONNECT" maxlength="30">
                 </div>
                 <div class="input-group">
                     <label for="poster-subtitle">Bottom Subtitle</label>
-                    <input type="text" id="poster-subtitle" placeholder="e.g. Point your camera at the code" value="Point your camera at the code" maxlength="50">
+                    <input type="text" id="poster-subtitle" class="form-input" placeholder="e.g. Point your camera at the code" value="Point your camera at the code" maxlength="50">
                 </div>
-
-                <!-- Actions -->
-                <button id="generate-btn" class="primary-btn">Generate Preview</button>
-                <button id="download-btn" class="secondary-btn" style="display: none;">Download Poster</button>
             </aside>
 
             <!-- Preview Panel -->
             <main class="preview-panel">
                 <div class="preview-container">
                     <p class="preview-hint">Live Preview</p>
+                    
                     <!-- Hidden div for library to generate the raw QR code -->
                     <div id="qr-code-raw" style="display: none;"></div>
                     
                     <!-- Visible canvas where the template + QR are drawn -->
                     <canvas id="poster-canvas" width="800" height="800"></canvas>
+
+                    <!-- Centralized Action Station under Canvas -->
+                    <div class="preview-actions">
+                        <button id="generate-btn" class="primary-btn">Generate Preview</button>
+                        <button id="download-btn" class="secondary-btn" style="display: none;">Download Poster</button>
+                    </div>
                 </div>
             </main>
         </div>
