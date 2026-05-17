@@ -91,17 +91,59 @@ if (loginForm) {
         const password = document.getElementById('password').value;
 
         try {
-            // Call Supabase
+            // Attempt to Sign In
             const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
 
             if (error) {
-                showError(loginForm, error.message);
-                btn.innerText = originalText;
-                btn.style.opacity = "1";
-                btn.disabled = false;
+                // If login fails, let's attempt to sign up as a new user!
+                console.log("Login failed, attempting auto-registration for:", email);
+                btn.innerText = "Creating Account...";
+                
+                try {
+                    const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: {
+                            data: {
+                                full_name: email.split('@')[0] // Fallback full name from email prefix
+                            }
+                        }
+                    });
+
+                    if (signUpError) {
+                        // If signup fails because the user already exists (invalid credentials for an existing account), show original login error
+                        const msg = signUpError.message.toLowerCase();
+                        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already in use') || msg.includes('taken')) {
+                            showError(loginForm, "Invalid login credentials.");
+                        } else {
+                            // Otherwise, show the signup error (e.g., password too short)
+                            showError(loginForm, signUpError.message);
+                        }
+                        btn.innerText = originalText;
+                        btn.style.opacity = "1";
+                        btn.disabled = false;
+                    } else {
+                        // Signup succeeded!
+                        if (signUpData.session) {
+                            await redirectByRole(signUpData.session.user.id);
+                        } else {
+                            // Email confirmation might be required
+                            showError(loginForm, "Account created! Please check your email to verify.");
+                            btn.innerText = "Verify Email";
+                            btn.style.opacity = "1";
+                            btn.disabled = false;
+                        }
+                    }
+                } catch (signUpException) {
+                    console.error("Auto-signup Exception:", signUpException);
+                    showError(loginForm, "Invalid login credentials.");
+                    btn.innerText = originalText;
+                    btn.style.opacity = "1";
+                    btn.disabled = false;
+                }
             } else {
                 await redirectByRole(data.user.id);
             }

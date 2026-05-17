@@ -817,7 +817,7 @@ canvas:hover {
     align-items: center;
     gap: 0.6rem;
     padding: 0.55rem 1.25rem;
-    background: rgba(30, 41, 59, 0.45);
+    background: #1e293b;
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     color: var(--text-main);
@@ -826,7 +826,6 @@ canvas:hover {
     font-size: 0.9rem;
     transition: all 0.2s ease;
     user-select: none;
-    backdrop-filter: blur(8px);
 }
 
 .profile-trigger:hover {
@@ -859,7 +858,6 @@ canvas:hover {
     gap: 0.25rem;
     z-index: 1000;
     animation: dropdownSlideDown 0.2s ease forwards;
-    backdrop-filter: blur(12px);
 }
 
 .dropdown-menu.show {

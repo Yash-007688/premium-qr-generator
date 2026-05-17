@@ -200,7 +200,14 @@ async function injectUnifiedDropdown(containerSelector) {
         // Handle Logout inside dropdown
         dropdownContainer.querySelector('#dropdown-logout-btn').addEventListener('click', async (e) => {
             e.preventDefault();
-            await supabaseClient.auth.signOut();
+            try {
+                // Clear all session storage and auth storage keys to wipe local credentials instantly
+                sessionStorage.clear();
+                localStorage.clear();
+                await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.error("SignOut exception handled:", err);
+            }
             window.location.href = "index.html";
         });
 
