@@ -215,3 +215,174 @@ async function injectUnifiedDropdown(containerSelector) {
         console.error("Unified dropdown injection failed:", err);
     }
 }
+
+// === DYNAMIC GITHUB-CONNECTED LAST UPDATED FOOTER INJECTOR ===
+async function injectLastUpdatedFooter() {
+    // Determine the current filename
+    let path = window.location.pathname;
+    let filename = path.substring(path.lastIndexOf('/') + 1);
+    if (!filename || filename === '/') {
+        filename = 'index.html';
+    }
+
+    // Create footer element if it doesn't exist
+    let footer = document.querySelector('footer.page-footer');
+    if (!footer) {
+        footer = document.createElement('footer');
+        footer.className = 'page-footer';
+        
+        // Custom injection logic based on page type to maintain perfect layouts
+        const authContainer = document.querySelector('.auth-container');
+        const suspendedContainer = document.querySelector('.suspended-container');
+        
+        if (authContainer) {
+            // For login/signup page - place inside the container below the card
+            authContainer.appendChild(footer);
+            footer.style.marginTop = '1.5rem';
+        } else if (suspendedContainer) {
+            // For banned page - place inside container below the content
+            suspendedContainer.appendChild(footer);
+            footer.style.marginTop = '1.5rem';
+        } else {
+            // For standard dashboard/admin/landing pages - append to body
+            document.body.appendChild(footer);
+            footer.style.marginTop = 'auto';
+        }
+    }
+
+    // Apply beautiful, premium styles to the footer
+    footer.style.textAlign = 'center';
+    footer.style.padding = '2rem 1.5rem';
+    footer.style.fontSize = '0.8rem';
+    footer.style.color = 'var(--text-muted, #94a3b8)';
+    footer.style.borderTop = '1px solid var(--border-color, rgba(255, 255, 255, 0.08))';
+    footer.style.width = '100%';
+    footer.style.display = 'flex';
+    footer.style.flexDirection = 'column';
+    footer.style.alignItems = 'center';
+    footer.style.gap = '0.5rem';
+    footer.style.zIndex = '10';
+    footer.style.background = 'rgba(15, 23, 42, 0.4)';
+    footer.style.backdropFilter = 'blur(8px)';
+
+    // Fallback static time in case API fails or offline
+    let displayTime = "Just now";
+    let commitLink = "#";
+    let commitShaShort = "local";
+
+    const cacheKey = `github_commit_${filename}`;
+    const cacheTimeKey = `github_commit_time_${filename}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(cacheTimeKey);
+
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache to avoid rate limit
+
+    if (cachedData && cachedTime && (now - parseInt(cachedTime, 10) < CACHE_DURATION)) {
+        try {
+            const parsed = JSON.parse(cachedData);
+            displayTime = parsed.dateStr;
+            commitLink = parsed.url;
+            commitShaShort = parsed.shaShort;
+        } catch (e) {
+            console.error("Failed to parse cached commit data", e);
+        }
+    } else {
+        try {
+            const repo = "Yash-007688/premium-qr-generator";
+            const response = await fetch(`https://api.github.com/repos/${repo}/commits?path=${filename}&per_page=1`);
+            if (response.ok) {
+                const commits = await response.ok ? await response.json() : [];
+                if (commits && commits.length > 0) {
+                    const latestCommit = commits[0];
+                    const rawDate = new Date(latestCommit.commit.committer.date);
+                    
+                    // Format the date beautifully
+                    displayTime = rawDate.toLocaleString([], {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    commitLink = latestCommit.html_url;
+                    commitShaShort = latestCommit.sha.substring(0, 7);
+
+                    // Cache it
+                    const dataToCache = {
+                        dateStr: displayTime,
+                        url: commitLink,
+                        shaShort: commitShaShort
+                    };
+                    localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+                    localStorage.setItem(cacheTimeKey, now.toString());
+                } else {
+                    // Fallback to last repo commit if file-specific commit is empty (e.g. untracked file)
+                    const repoResponse = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=1`);
+                    if (repoResponse.ok) {
+                        const repoCommits = await repoResponse.json();
+                        if (repoCommits && repoCommits.length > 0) {
+                            const latestCommit = repoCommits[0];
+                            const rawDate = new Date(latestCommit.commit.committer.date);
+                            displayTime = rawDate.toLocaleString([], {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            commitLink = latestCommit.html_url;
+                            commitShaShort = latestCommit.sha.substring(0, 7);
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("GitHub API fetch failed, using local/cached fallback", err);
+            if (cachedData) {
+                // If offline but have expired cache, use it
+                try {
+                    const parsed = JSON.parse(cachedData);
+                    displayTime = parsed.dateStr;
+                    commitLink = parsed.url;
+                    commitShaShort = parsed.shaShort;
+                } catch (e) {}
+            }
+        }
+    }
+
+    footer.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: center;">
+            <span>✨ Premium QR Web Studio</span>
+            <span style="color: var(--border-color, rgba(255,255,255,0.1));">|</span>
+            <span style="display: flex; align-items: center; gap: 0.35rem;">
+                🕒 Page Last Updated: <strong style="color: var(--text-main, #f8fafc);">${displayTime}</strong>
+            </span>
+            <span style="color: var(--border-color, rgba(255,255,255,0.1));">|</span>
+            <a href="${commitLink}" target="_blank" style="color: var(--primary, #6366f1); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem; transition: color 0.2s ease;">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="display: inline-block; vertical-align: middle;">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                git ${commitShaShort}
+            </a>
+        </div>
+        <p style="font-size: 0.7rem; color: rgba(148, 163, 184, 0.6); margin-top: 0.25rem;">&copy; ${new Date().getFullYear()} QR Web. All rights reserved.</p>
+    `;
+
+    // Add CSS transition/hover styling dynamically
+    const link = footer.querySelector('a');
+    if (link) {
+        link.addEventListener('mouseenter', () => link.style.color = '#818cf8');
+        link.addEventListener('mouseleave', () => link.style.color = '#6366f1');
+    }
+}
+
+// Automatically inject premium GitHub footer on DOM load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectLastUpdatedFooter);
+} else {
+    injectLastUpdatedFooter();
+}
