@@ -10,315 +10,7 @@
     <!-- Chart.js CDN for robust graphing -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <style>
-        .admin-container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background-color: var(--panel-bg);
-            border-radius: 1rem;
-            border: 1px solid var(--border-color);
-            backdrop-filter: blur(12px);
-        }
-        
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .table-section {
-            margin-bottom: 3rem;
-        }
 
-        .table-section h3 {
-            margin-bottom: 1.25rem;
-            color: var(--primary);
-            font-size: 1.25rem;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: var(--input-bg);
-            border-radius: 0.5rem;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background-color: rgba(99, 102, 241, 0.1);
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-
-        td {
-            font-size: 0.95rem;
-        }
-
-        .action-btn {
-            padding: 0.5rem 1rem;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-
-        .action-btn:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-muted);
-        }
-
-        /* === PREMIUM ANALYTICS STYLING === */
-        .analytics-section {
-            margin-bottom: 3rem;
-        }
-
-        .analytics-section h3 {
-            margin-bottom: 1.5rem;
-            color: var(--primary);
-            font-size: 1.4rem;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: rgba(30, 41, 59, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            backdrop-filter: blur(8px);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.2);
-            border-color: rgba(99, 102, 241, 0.3);
-        }
-
-        .stat-icon {
-            font-size: 1.75rem;
-            padding: 0.75rem;
-            background: rgba(99, 102, 241, 0.12);
-            border-radius: 0.75rem;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 50px;
-            height: 50px;
-        }
-
-        .stat-info {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .stat-value {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: white;
-            line-height: 1.2;
-        }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        /* === GRAPH SORTING & FILTERING === */
-        .graph-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            background: rgba(15, 23, 42, 0.4);
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .graph-controls-title {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text-main);
-        }
-
-        .controls-inner {
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .control-group label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .control-group select {
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 0.4rem 0.8rem;
-            border-radius: 0.4rem;
-            font-size: 0.85rem;
-            outline: none;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-
-        .control-group select:focus {
-            border-color: var(--primary);
-        }
-
-        /* Charts panel */
-        .charts-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 3rem;
-        }
-
-        @media (max-width: 900px) {
-            .charts-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .chart-wrapper {
-            background: rgba(30, 41, 59, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            backdrop-filter: blur(8px);
-            min-height: 320px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chart-wrapper h4 {
-            margin-bottom: 1.25rem;
-            color: var(--text-main);
-            font-weight: 600;
-            font-size: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding-bottom: 0.5rem;
-        }
-
-        .chart-canvas-container {
-            flex: 1;
-            position: relative;
-            width: 100%;
-            height: 250px;
-        }
-
-        /* === MODERATOR CONTROLS === */
-        .mod-btn {
-            padding: 0.4rem 0.8rem;
-            border: none;
-            border-radius: 0.3rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-right: 0.4rem;
-        }
-
-        .mod-btn-danger {
-            background-color: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .mod-btn-danger:hover {
-            background-color: #ef4444;
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .mod-btn-warning {
-            background-color: rgba(249, 115, 22, 0.15);
-            color: #fb923c;
-            border: 1px solid rgba(249, 115, 22, 0.3);
-        }
-
-        .mod-btn-warning:hover {
-            background-color: #f97316;
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .mod-btn-success {
-            background-color: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .mod-btn-success:hover {
-            background-color: #22c55e;
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .badge {
-            padding: 0.2rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .badge-active {
-            background-color: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
-        }
-
-        .badge-banned {
-            background-color: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-        }
-    </style>
 </head>
 <body class="landing-body">
     
@@ -409,60 +101,66 @@
         <!-- 👥 USER MANAGEMENT TABLE -->
         <div class="table-section">
             <h3>👥 Registered Users</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date Joined</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="auth-table-body">
-                    <tr><td colspan="6" class="empty-state">Loading...</td></tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date Joined</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auth-table-body">
+                        <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- 📶 WI-FI & HOTSPOT MANAGEMENT TABLE -->
         <div class="table-section">
             <h3>📶 Wi-Fi & Hotspot QR Codes</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Created By</th>
-                        <th>Type</th>
-                        <th>Network (SSID)</th>
-                        <th>Template</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="wifi-table-body">
-                    <tr><td colspan="6" class="empty-state">Loading...</td></tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Created By</th>
+                            <th>Type</th>
+                            <th>Network (SSID)</th>
+                            <th>Template</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wifi-table-body">
+                        <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- 🔗 LINKS & URLS TABLE -->
         <div class="table-section">
             <h3>🔗 Links & URLs</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Created By</th>
-                        <th>URL</th>
-                        <th>Template</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="link-table-body">
-                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Created By</th>
+                            <th>URL</th>
+                            <th>Template</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="link-table-body">
+                        <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
