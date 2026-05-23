@@ -13,6 +13,8 @@
     <!-- Unified Dynamic Navigation bar -->
     <nav class="dashboard-nav">
         <div class="logo"><img src="IMG/9c5f4d5b-152d-4d34-b2bd-4aa411d5f4d2.png" class="site-logo" alt="QR Web logo"><span>✨ QR Web Profile</span></div>
+        <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+        <div class="nav-links"></div>
         <!-- Unified Dropdown will be injected here dynamically -->
     </nav>
 
@@ -75,5 +77,17 @@
     <script src="supabaseClient.js"></script>
     <script src="auth-utils.js"></script>
     <script src="profile.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            const toggle = document.querySelector('.nav-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.body.classList.toggle('nav-open');
+                });
+            }
+            document.addEventListener('click', function(){ document.body.classList.remove('nav-open'); });
+        });
+    </script>
 </body>
 </html>

@@ -200,11 +200,15 @@ async function injectUnifiedDropdown(containerSelector) {
         // Handle Logout inside dropdown
         dropdownContainer.querySelector('#dropdown-logout-btn').addEventListener('click', async (e) => {
             e.preventDefault();
+            if (typeof window.handleLogout === 'function') {
+                return window.handleLogout();
+            }
             try {
-                // Clear all session storage and auth storage keys to wipe local credentials instantly
                 sessionStorage.clear();
                 localStorage.clear();
-                await supabaseClient.auth.signOut();
+                if (supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.signOut === 'function') {
+                    await supabaseClient.auth.signOut();
+                }
             } catch (err) {
                 console.error("SignOut exception handled:", err);
             }
@@ -347,6 +351,20 @@ async function syncPageTimestampToSupabase() {
         }
     }
 }
+
+// Global logout helper used by dropdown and mobile menus
+window.handleLogout = async function() {
+    try {
+        sessionStorage.clear();
+        localStorage.clear();
+        if (typeof supabaseClient !== 'undefined' && supabaseClient?.auth?.signOut) {
+            await supabaseClient.auth.signOut();
+        }
+    } catch (e) {
+        console.error('Logout failed:', e);
+    }
+    window.location.href = 'index.html';
+};
 
 // Automatically sync timestamp on DOM load (silently, no UI)
 if (document.readyState === 'loading') {

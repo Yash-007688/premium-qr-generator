@@ -43,7 +43,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
-    background-color: var(--panel-bg);
+    background-color: #0b1220; /* opaque dark background for better contrast */
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(12px);
 }
@@ -523,6 +523,54 @@ canvas:hover {
     -webkit-text-fill-color: transparent;
 }
 
+/* Primary navbar layout */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #0b1220; /* opaque */
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Hamburger toggle */
+.nav-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+/* Nav links container */
+.nav-links {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+/* Mobile: collapse nav links into a drawer */
+@media (max-width: 768px) {
+    .nav-toggle { display: inline-block; }
+    .nav-links {
+        position: absolute;
+        top: 60px;
+        right: 12px;
+        display: none;
+        flex-direction: column;
+        background: #0b1220;
+        border: 1px solid var(--border-color);
+        padding: 0.75rem;
+        border-radius: 0.6rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        z-index: 1000;
+    }
+    body.nav-open .nav-links {
+        display: flex;
+    }
+}
+
 .nav-links {
     display: flex;
     gap: 1rem;
@@ -942,7 +990,7 @@ canvas:hover {
     align-items: center;
     gap: 0.6rem;
     padding: 0.55rem 1.25rem;
-    background: #1e293b;
+    background: #0b1220; /* opaque */
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     color: var(--text-main);
@@ -973,7 +1021,7 @@ canvas:hover {
     right: 0;
     top: calc(100% + 0.5rem);
     width: 220px;
-    background: #1e293b;
+    background: #0b1220; /* opaque dropdown */
     border: 1px solid var(--border-color);
     border-radius: 0.75rem;
     box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6);

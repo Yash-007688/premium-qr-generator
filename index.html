@@ -12,6 +12,7 @@
     
     <nav class="navbar">
         <div class="logo"><img src="IMG/9c5f4d5b-152d-4d34-b2bd-4aa411d5f4d2.png" class="site-logo" alt="QR Web logo"><span>✨ QR Web</span></div>
+        <button class="nav-toggle" aria-label="Toggle menu">☰</button>
         <div class="nav-links">
             <a href="login.html" class="nav-btn login-btn">Log In</a>
             <a href="signup.html" class="nav-btn signup-btn">Sign Up</a>
@@ -51,5 +52,18 @@
     <script src="oauth-bounce.js"></script>
     <script src="auth-utils.js"></script>
     <script src="index.js"></script>
+    <script>
+        // Mobile nav toggle
+        document.addEventListener('DOMContentLoaded', function(){
+            const toggle = document.querySelector('.nav-toggle');
+            if (!toggle) return;
+            toggle.addEventListener('click', function(e){
+                e.stopPropagation();
+                document.body.classList.toggle('nav-open');
+            });
+            // Close on outside click
+            document.addEventListener('click', function(){ document.body.classList.remove('nav-open'); });
+        });
+    </script>
 </body>
 </html>
