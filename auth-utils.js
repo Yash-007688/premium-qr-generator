@@ -14,6 +14,53 @@ async function ensureUserProfile(session) {
     );
 
     if (error) console.error('Profile save failed:', error.message);
+    // Attempt to capture user's current public IP and record it in `user_ips` table.
+    // Uses a public IP lookup service then upserts into Postgres. Fails silently.
+    (async () => {
+        try {
+            const resp = await fetch('https://api.ipify.org?format=json');
+            if (!resp.ok) return;
+            const json = await resp.json();
+            const ip = json?.ip;
+            if (!ip) return;
+
+            // Try to find an existing row for this user/ip
+            try {
+                const { data: existing, error: selErr } = await supabaseClient
+                    .from('user_ips')
+                    .select('id, seen_count')
+                    .eq('user_id', session.user.id)
+                    .eq('ip', ip)
+                    .maybeSingle();
+
+                if (selErr) return;
+
+                if (existing && existing.id) {
+                    // Update last_seen and increment seen_count
+                    await supabaseClient.from('user_ips').update({
+                        last_seen: new Date().toISOString(),
+                        seen_count: (existing.seen_count || 0) + 1
+                    }).eq('id', existing.id);
+                } else {
+                    // Insert a new row
+                    await supabaseClient.from('user_ips').insert([
+                        {
+                            user_id: session.user.id,
+                            ip: ip,
+                            first_seen: new Date().toISOString(),
+                            last_seen: new Date().toISOString(),
+                            seen_count: 1
+                        }
+                    ]);
+                }
+            } catch (e) {
+                // ignore errors
+            }
+        } catch (e) {
+            // network or other error - ignore to avoid blocking login
+        }
+    })();
+
     return { error: error?.message || null };
 }
 
@@ -169,7 +216,16 @@ async function injectUnifiedDropdown(containerSelector) {
         // Adapt navigation injection depending on the target navbar selector
         if (containerSelector === '.nav-links') {
             // Landing page navbar
-            container.innerHTML = '';
+        // Also update profiles table to mark user as online and set last_seen
+        try {
+            await supabaseClient.from('profiles').update({
+                last_seen: new Date().toISOString(),
+                status: 'online'
+            }).eq('id', session.user.id);
+        } catch (e) {
+            // ignore
+        }
+    })();
             container.appendChild(dropdownContainer);
         } else if (containerSelector === '.dashboard-nav') {
             // Studio/Admin/Profile navbars - keep logo, replace others
@@ -355,6 +411,19 @@ async function syncPageTimestampToSupabase() {
 // Global logout helper used by dropdown and mobile menus
 window.handleLogout = async function() {
     try {
+        // Mark user offline before signing out
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.user && session.user.id) {
+                await supabaseClient.from('profiles').update({
+                    last_seen: new Date().toISOString(),
+                    status: 'offline'
+                }).eq('id', session.user.id);
+            }
+        } catch (e) {
+            // ignore
+        }
+
         sessionStorage.clear();
         localStorage.clear();
         if (typeof supabaseClient !== 'undefined' && supabaseClient?.auth?.signOut) {
@@ -371,5 +440,58 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', syncPageTimestampToSupabase);
 } else {
     syncPageTimestampToSupabase();
+}
+
+// Presence heartbeat: periodically update profiles.last_seen and status
+function startPresenceHeartbeat() {
+    let intervalId = null;
+
+    const sendHeartbeat = async () => {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return;
+            await supabaseClient.from('profiles').update({
+                last_seen: new Date().toISOString(),
+                status: 'online'
+            }).eq('id', session.user.id);
+        } catch (e) {
+            // ignore
+        }
+    };
+
+    document.addEventListener('visibilitychange', async () => {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return;
+            if (document.visibilityState === 'visible') {
+                await supabaseClient.from('profiles').update({ last_seen: new Date().toISOString(), status: 'online' }).eq('id', session.user.id);
+            } else {
+                await supabaseClient.from('profiles').update({ last_seen: new Date().toISOString(), status: 'offline' }).eq('id', session.user.id);
+            }
+        } catch (e) {}
+    });
+
+    window.addEventListener('beforeunload', async () => {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                await supabaseClient.from('profiles').update({ last_seen: new Date().toISOString(), status: 'offline' }).eq('id', session.user.id);
+            }
+        } catch (e) {}
+    });
+
+    // start immediately and repeat every 30s
+    sendHeartbeat();
+    intervalId = setInterval(sendHeartbeat, 30000);
+
+    // expose stop handle
+    window.__presenceHeartbeat = { stop: () => clearInterval(intervalId) };
+}
+
+// Start presence heartbeat on DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startPresenceHeartbeat);
+} else {
+    startPresenceHeartbeat();
 }
 

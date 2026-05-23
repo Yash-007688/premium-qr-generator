@@ -54,11 +54,59 @@ async function loadProfileData() {
             const firstLetter = (currentProfileName || profile.email || 'U').charAt(0).toUpperCase();
             const avatar = document.getElementById('profile-avatar-icon');
             if (avatar) avatar.innerText = firstLetter;
+
+            // Status / Last seen
+            const statusEl = document.getElementById('profile-status-static');
+            if (statusEl) {
+                if (profile.status === 'online') {
+                    statusEl.innerText = 'Online now';
+                } else if (profile.last_seen) {
+                    statusEl.innerText = formatTimeAgo(profile.last_seen) + ' ago';
+                } else {
+                    statusEl.innerText = 'Offline';
+                }
+            }
         }
     } catch (e) {
         console.error("Failed to load user profile:", e);
     }
 }
+
+function formatTimeAgo(iso) {
+    try {
+        const then = new Date(iso).getTime();
+        const diff = Math.max(0, Date.now() - then);
+        const s = Math.floor(diff / 1000);
+        if (s < 60) return `${s}s`;
+        const m = Math.floor(s / 60);
+        if (m < 60) return `${m}m`;
+        const h = Math.floor(m / 60);
+        if (h < 24) return `${h}h`;
+        const d = Math.floor(h / 24);
+        return `${d}d`;
+    } catch (e) {
+        return 'unknown';
+    }
+}
+
+// Poll only the status/last_seen every 30s to keep UI fresh
+async function refreshProfileStatus() {
+    try {
+        if (!currentUserId) return;
+        const { data: profile, error } = await supabaseClient.from('profiles').select('status,last_seen').eq('id', currentUserId).maybeSingle();
+        if (error || !profile) return;
+        const statusEl = document.getElementById('profile-status-static');
+        if (!statusEl) return;
+        if (profile.status === 'online') statusEl.innerText = 'Online now';
+        else if (profile.last_seen) statusEl.innerText = formatTimeAgo(profile.last_seen) + ' ago';
+        else statusEl.innerText = 'Offline';
+    } catch (e) {
+        // ignore
+    }
+}
+
+// Start polling when page is loaded
+setInterval(refreshProfileStatus, 30000);
 
 // Handle Form Submission
 async function handleProfileUpdate(e) {
