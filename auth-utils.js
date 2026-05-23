@@ -309,7 +309,8 @@ async function syncPageTimestampToSupabase() {
                     const result = {
                         lastUpdatedAt: latestCommit.commit.committer.date,
                         commitSha: latestCommit.sha,
-                        commitUrl: latestCommit.html_url
+                        commitUrl: latestCommit.html_url,
+                        commitMessage: latestCommit.commit && latestCommit.commit.message ? latestCommit.commit.message : null
                     };
                     localStorage.setItem(cacheKey, JSON.stringify(result));
                     localStorage.setItem(cacheTimeKey, now.toString());
@@ -335,6 +336,7 @@ async function syncPageTimestampToSupabase() {
                         last_updated_at: commitData.lastUpdatedAt,
                         commit_sha: commitData.commitSha,
                         commit_url: commitData.commitUrl,
+                        commit_name: commitData.commitMessage || null,
                         updated_at: new Date().toISOString()
                     },
                     { onConflict: 'page_name' }
