@@ -56,6 +56,21 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
+/* Logo image used across navbars */
+.dashboard-nav .logo, .navbar .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.site-logo {
+    height: 34px;
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+    border-radius: 6px;
+}
+
 .logout-btn {
     padding: 0.5rem 1.5rem;
     border-radius: 0.5rem;
