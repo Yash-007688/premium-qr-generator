@@ -222,7 +222,8 @@ async function injectUnifiedDropdown(containerSelector) {
 async function syncPageTimestampToSupabase() {
     const getRepoRelativePath = (urlPath) => {
         if (!urlPath) return null;
-        const trimmed = urlPath.replace(/\/+$|^\//g, '');
+        const noQuery = urlPath.replace(/[?#].*$/, '');
+        const trimmed = noQuery.replace(/\/+$|^\//g, '');
         if (!trimmed) return 'index.html';
         return trimmed;
     };
@@ -238,7 +239,14 @@ async function syncPageTimestampToSupabase() {
     };
 
     const isTrackableFile = (filePath) => {
-        return typeof filePath === 'string' && /\.(html|js|css|py)$/i.test(filePath);
+        return typeof filePath === 'string' && filePath.trim() !== '';
+    };
+
+    const addTrackedResource = (url) => {
+        const resourcePath = getResourceFilenameFromUrl(url);
+        if (isTrackableFile(resourcePath)) {
+            trackedFilenames.add(resourcePath);
+        }
     };
 
     const trackedFilenames = new Set();
@@ -247,19 +255,16 @@ async function syncPageTimestampToSupabase() {
     const pagePath = getRepoRelativePath(window.location.pathname);
     if (isTrackableFile(pagePath)) trackedFilenames.add(pagePath || 'index.html');
 
-    // Track local JS files loaded by this page
-    document.querySelectorAll('script[src]').forEach((script) => {
-        const resourcePath = getResourceFilenameFromUrl(script.src);
-        if (isTrackableFile(resourcePath)) trackedFilenames.add(resourcePath);
+    // Track local JS, CSS, image, video, audio, and generic resource files loaded by the page
+    document.querySelectorAll('[src], link[href]').forEach((element) => {
+        if (element.tagName === 'LINK') {
+            addTrackedResource(element.href);
+        } else {
+            addTrackedResource(element.src || element.href);
+        }
     });
 
-    // Track local CSS files loaded by this page
-    document.querySelectorAll('link[rel="stylesheet"][href]').forEach((link) => {
-        const resourcePath = getResourceFilenameFromUrl(link.href);
-        if (isTrackableFile(resourcePath)) trackedFilenames.add(resourcePath);
-    });
-
-    // Optional manual override for additional files to sync
+    // Track any file references that may be manually registered on the page
     if (Array.isArray(window.SYNC_PAGE_TIMESTAMP_FILES)) {
         window.SYNC_PAGE_TIMESTAMP_FILES.forEach((file) => {
             const normalized = getRepoRelativePath(file);
