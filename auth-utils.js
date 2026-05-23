@@ -220,105 +220,123 @@ async function injectUnifiedDropdown(containerSelector) {
 // Fetches the latest GitHub commit timestamp for the current page and saves it
 // to the `page_timestamps` Supabase table. No visible UI is rendered.
 async function syncPageTimestampToSupabase() {
-    // Determine the current filename, supporting HTML, JS, CSS, PY, and other tracked files.
-    const getCurrentFilename = () => {
-        const path = window.location.pathname;
-        const trimmedPath = path.replace(/\/+$/, '');
-        const lastSegment = trimmedPath.substring(trimmedPath.lastIndexOf('/') + 1);
-
-        if (!lastSegment) {
-            return 'index.html';
-        }
-
-        return lastSegment;
+    const getRepoRelativePath = (urlPath) => {
+        if (!urlPath) return null;
+        const trimmed = urlPath.replace(/\/+$|^\//g, '');
+        if (!trimmed) return 'index.html';
+        return trimmed;
     };
 
-    const filename = getCurrentFilename();
+    const getResourceFilenameFromUrl = (url) => {
+        try {
+            const parsed = new URL(url, window.location.href);
+            if (parsed.origin !== window.location.origin) return null;
+            return getRepoRelativePath(parsed.pathname);
+        } catch (e) {
+            return null;
+        }
+    };
 
-    // Local cache to avoid hammering GitHub API on every page load
-    const cacheKey = `github_commit_${filename}`;
-    const cacheTimeKey = `github_commit_time_${filename}`;
-    const cachedData = localStorage.getItem(cacheKey);
-    const cachedTime = localStorage.getItem(cacheTimeKey);
+    const isTrackableFile = (filePath) => {
+        return typeof filePath === 'string' && /\.(html|js|css|py)$/i.test(filePath);
+    };
+
+    const trackedFilenames = new Set();
+
+    // Current page path
+    const pagePath = getRepoRelativePath(window.location.pathname);
+    if (isTrackableFile(pagePath)) trackedFilenames.add(pagePath || 'index.html');
+
+    // Track local JS files loaded by this page
+    document.querySelectorAll('script[src]').forEach((script) => {
+        const resourcePath = getResourceFilenameFromUrl(script.src);
+        if (isTrackableFile(resourcePath)) trackedFilenames.add(resourcePath);
+    });
+
+    // Track local CSS files loaded by this page
+    document.querySelectorAll('link[rel="stylesheet"][href]').forEach((link) => {
+        const resourcePath = getResourceFilenameFromUrl(link.href);
+        if (isTrackableFile(resourcePath)) trackedFilenames.add(resourcePath);
+    });
+
+    // Optional manual override for additional files to sync
+    if (Array.isArray(window.SYNC_PAGE_TIMESTAMP_FILES)) {
+        window.SYNC_PAGE_TIMESTAMP_FILES.forEach((file) => {
+            const normalized = getRepoRelativePath(file);
+            if (isTrackableFile(normalized)) trackedFilenames.add(normalized);
+        });
+    }
+
+    const filenames = [...trackedFilenames];
 
     const now = Date.now();
     const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+    const repo = "Yash-007688/premium-qr-generator";
 
-    let lastUpdatedAt = null;
-    let commitSha = null;
-    let commitUrl = null;
+    const getCacheKey = (filePath) => `github_commit_${filePath}`;
+    const getCacheTimeKey = (filePath) => `github_commit_time_${filePath}`;
 
-    if (cachedData && cachedTime && (now - parseInt(cachedTime, 10) < CACHE_DURATION)) {
-        try {
-            const parsed = JSON.parse(cachedData);
-            lastUpdatedAt = parsed.dateISO;
-            commitUrl = parsed.url;
-            commitSha = parsed.sha;
-        } catch (e) {
-            console.error("Failed to parse cached commit data", e);
+    const fetchGitHubCommitForFile = async (filePath) => {
+        const cacheKey = getCacheKey(filePath);
+        const cacheTimeKey = getCacheTimeKey(filePath);
+        const cachedData = localStorage.getItem(cacheKey);
+        const cachedTime = localStorage.getItem(cacheTimeKey);
+
+        if (cachedData && cachedTime && (now - parseInt(cachedTime, 10) < CACHE_DURATION)) {
+            try {
+                const parsed = JSON.parse(cachedData);
+                return {
+                    lastUpdatedAt: parsed.dateISO,
+                    commitSha: parsed.sha,
+                    commitUrl: parsed.url
+                };
+            } catch (e) {
+                console.error("Failed to parse cached commit data", e);
+            }
         }
-    } else {
+
         try {
-            const repo = "Yash-007688/premium-qr-generator";
-            const response = await fetch(`https://api.github.com/repos/${repo}/commits?path=${filename}&per_page=1`);
+            const response = await fetch(`https://api.github.com/repos/${repo}/commits?path=${filePath}&per_page=1`);
             if (response.ok) {
                 const commits = await response.json();
                 if (commits && commits.length > 0) {
                     const latestCommit = commits[0];
-                    lastUpdatedAt = latestCommit.commit.committer.date;
-                    commitUrl = latestCommit.html_url;
-                    commitSha = latestCommit.sha;
-
-                    // Cache it
-                    const dataToCache = {
-                        dateISO: lastUpdatedAt,
-                        url: commitUrl,
-                        sha: commitSha
+                    const result = {
+                        lastUpdatedAt: latestCommit.commit.committer.date,
+                        commitSha: latestCommit.sha,
+                        commitUrl: latestCommit.html_url
                     };
-                    localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+                    localStorage.setItem(cacheKey, JSON.stringify(result));
                     localStorage.setItem(cacheTimeKey, now.toString());
-                } else {
-                    // Fallback to last repo commit if file-specific commit is empty
-                    const repoResponse = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=1`);
-                    if (repoResponse.ok) {
-                        const repoCommits = await repoResponse.json();
-                        if (repoCommits && repoCommits.length > 0) {
-                            const latestCommit = repoCommits[0];
-                            lastUpdatedAt = latestCommit.commit.committer.date;
-                            commitUrl = latestCommit.html_url;
-                            commitSha = latestCommit.sha;
-                        }
-                    }
+                    return result;
                 }
             }
         } catch (err) {
             console.error("GitHub API fetch failed:", err);
-            if (cachedData) {
-                try {
-                    const parsed = JSON.parse(cachedData);
-                    lastUpdatedAt = parsed.dateISO;
-                    commitUrl = parsed.url;
-                    commitSha = parsed.sha;
-                } catch (e) {}
-            }
         }
-    }
 
-    // Save to Supabase page_timestamps table (upsert by page_name)
-    if (lastUpdatedAt && typeof supabaseClient !== 'undefined') {
-        try {
-            await supabaseClient.from('page_timestamps').upsert(
-                {
-                    page_name: filename,
-                    last_updated_at: lastUpdatedAt,
-                    commit_sha: commitSha,
-                    commit_url: commitUrl,
-                    updated_at: new Date().toISOString()
-                },
-                { onConflict: 'page_name' }
-            );
-        } catch (e) {
-            console.error("Failed to sync page timestamp to Supabase:", e);
+        return null;
+    };
+
+    if (typeof supabaseClient !== 'undefined') {
+        for (const filePath of filenames) {
+            try {
+                const commitData = await fetchGitHubCommitForFile(filePath);
+                if (!commitData) continue;
+
+                await supabaseClient.from('page_timestamps').upsert(
+                    {
+                        page_name: filePath,
+                        last_updated_at: commitData.lastUpdatedAt,
+                        commit_sha: commitData.commitSha,
+                        commit_url: commitData.commitUrl,
+                        updated_at: new Date().toISOString()
+                    },
+                    { onConflict: 'page_name' }
+                );
+            } catch (e) {
+                console.error(`Failed to sync timestamp for ${filePath}:`, e);
+            }
         }
     }
 }
