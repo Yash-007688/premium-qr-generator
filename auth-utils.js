@@ -220,12 +220,20 @@ async function injectUnifiedDropdown(containerSelector) {
 // Fetches the latest GitHub commit timestamp for the current page and saves it
 // to the `page_timestamps` Supabase table. No visible UI is rendered.
 async function syncPageTimestampToSupabase() {
-    // Determine the current filename
-    let path = window.location.pathname;
-    let filename = path.substring(path.lastIndexOf('/') + 1);
-    if (!filename || filename === '/') {
-        filename = 'index.html';
-    }
+    // Determine the current filename, supporting HTML, JS, CSS, PY, and other tracked files.
+    const getCurrentFilename = () => {
+        const path = window.location.pathname;
+        const trimmedPath = path.replace(/\/+$/, '');
+        const lastSegment = trimmedPath.substring(trimmedPath.lastIndexOf('/') + 1);
+
+        if (!lastSegment) {
+            return 'index.html';
+        }
+
+        return lastSegment;
+    };
+
+    const filename = getCurrentFilename();
 
     // Local cache to avoid hammering GitHub API on every page load
     const cacheKey = `github_commit_${filename}`;
