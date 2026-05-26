@@ -215,17 +215,17 @@ async function injectUnifiedDropdown(containerSelector) {
 
         // Adapt navigation injection depending on the target navbar selector
         if (containerSelector === '.nav-links') {
-            // Landing page navbar
-        // Also update profiles table to mark user as online and set last_seen
-        try {
-            await supabaseClient.from('profiles').update({
-                last_seen: new Date().toISOString(),
-                status: 'online'
-            }).eq('id', session.user.id);
-        } catch (e) {
-            // ignore
-        }
-    })();
+            // Also update profiles table to mark user as online and set last_seen
+            (async () => {
+                try {
+                    await supabaseClient.from('profiles').update({
+                        last_seen: new Date().toISOString(),
+                        status: 'online'
+                    }).eq('id', session.user.id);
+                } catch (e) {
+                    // ignore
+                }
+            })();
             container.appendChild(dropdownContainer);
         } else if (containerSelector === '.dashboard-nav') {
             // Studio/Admin/Profile navbars - keep logo, replace others
