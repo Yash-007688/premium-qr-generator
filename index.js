@@ -6,6 +6,12 @@ window.addEventListener('DOMContentLoaded', async () => {
             // 1. Inject Unified Dropdown inside navbar links container
             await injectUnifiedDropdown('.nav-links');
 
+            // 1.5 Hide old login/signup buttons in nav
+            const loginBtn = document.querySelector('.nav-links .login-btn');
+            const signupBtn = document.querySelector('.nav-links .signup-btn');
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (signupBtn) signupBtn.style.display = 'none';
+
             // 2. Update CTA Hero Buttons
             const heroBtn = document.querySelector('.hero-btn');
             if (heroBtn) {
