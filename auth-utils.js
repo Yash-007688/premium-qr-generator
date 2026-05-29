@@ -205,6 +205,7 @@ async function injectUnifiedDropdown(containerSelector) {
                 <span class="arrow">▼</span>
             </div>
             <div class="dropdown-menu" id="profile-dropdown-menu">
+                <a class="dropdown-item" href="index.html">🏠 Home Page</a>
                 <a class="dropdown-item" href="profile.html">👤 My Profile</a>
                 <a class="dropdown-item" href="dashboard.html?studio=1">📶 Creator Studio</a>
                 ${adminItem}
@@ -228,11 +229,17 @@ async function injectUnifiedDropdown(containerSelector) {
             })();
             container.appendChild(dropdownContainer);
         } else if (containerSelector === '.dashboard-nav') {
-            // Studio/Admin/Profile navbars - keep logo, replace others
-            const logo = container.querySelector('.logo');
-            container.innerHTML = '';
-            if (logo) container.appendChild(logo);
-            container.appendChild(dropdownContainer);
+            // Studio/Admin/Profile navbars - keep logo and nav-toggle, replace others inside nav-links
+            const navLinks = container.querySelector('.nav-links');
+            if (navLinks) {
+                // Clear existing nav links (like Back to Studio, etc) except we might want to keep some?
+                // Actually, let's just append the dropdown container to navLinks.
+                // Wait, previously we cleared the whole container. So let's clear navLinks and append.
+                navLinks.innerHTML = '';
+                navLinks.appendChild(dropdownContainer);
+            } else {
+                container.appendChild(dropdownContainer);
+            }
         } else {
             container.appendChild(dropdownContainer);
         }
