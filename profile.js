@@ -50,10 +50,22 @@ async function loadProfileData() {
                 day: 'numeric'
             });
 
-            // Set Avatar letter
-            const firstLetter = (currentProfileName || profile.email || 'U').charAt(0).toUpperCase();
+            // Set Avatar image or letter
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const meta = session?.user?.user_metadata || {};
+            const avatarUrl = meta.avatar_url || meta.picture || '';
             const avatar = document.getElementById('profile-avatar-icon');
-            if (avatar) avatar.innerText = firstLetter;
+            if (avatar) {
+                if (avatarUrl) {
+                    avatar.innerHTML = `<img src="${avatarUrl}" class="profile-avatar-img" referrerpolicy="no-referrer">`;
+                    avatar.style.padding = '0';
+                    avatar.style.background = 'transparent';
+                    avatar.style.overflow = 'hidden';
+                } else {
+                    const firstLetter = (currentProfileName || profile.email || 'U').charAt(0).toUpperCase();
+                    avatar.innerText = firstLetter;
+                }
+            }
 
             // Status / Last seen
             const statusEl = document.getElementById('profile-status-static');

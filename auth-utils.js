@@ -193,6 +193,13 @@ async function injectUnifiedDropdown(containerSelector) {
         const fullName = activeProfile?.full_name || session.user.email.split('@')[0];
         const isAdmin = activeProfile?.role === 'admin';
 
+        const meta = session.user.user_metadata || {};
+        const avatarUrl = meta.avatar_url || meta.picture || '';
+        let avatarHtml = '👤 ';
+        if (avatarUrl) {
+            avatarHtml = `<img src="${avatarUrl}" class="nav-avatar" referrerpolicy="no-referrer"> `;
+        }
+
         // Create unified glassmorphic dropdown container
         const dropdownContainer = document.createElement('div');
         dropdownContainer.className = 'profile-dropdown-container';
@@ -209,7 +216,8 @@ async function injectUnifiedDropdown(containerSelector) {
             </button>
             <div class="profile-trigger-wrapper" style="position: relative; display: inline-block;">
                 <div class="profile-trigger" id="profile-trigger-btn">
-                    <span>👤 ${fullName}</span>
+                    ${avatarHtml}
+                    <span>${fullName}</span>
                     <span class="arrow">▼</span>
                 </div>
                 <div class="dropdown-menu" id="profile-dropdown-menu">
