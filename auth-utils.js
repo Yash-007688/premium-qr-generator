@@ -196,21 +196,30 @@ async function injectUnifiedDropdown(containerSelector) {
         // Create unified glassmorphic dropdown container
         const dropdownContainer = document.createElement('div');
         dropdownContainer.className = 'profile-dropdown-container';
+        dropdownContainer.style.display = 'flex';
+        dropdownContainer.style.alignItems = 'center';
+        dropdownContainer.style.gap = '0.8rem';
 
         const adminItem = isAdmin ? `<a class="dropdown-item" href="admin.html">✨ Admin Panel</a>` : '';
 
         dropdownContainer.innerHTML = `
-            <div class="profile-trigger" id="profile-trigger-btn">
-                <span>👤 ${fullName}</span>
-                <span class="arrow">▼</span>
-            </div>
-            <div class="dropdown-menu" id="profile-dropdown-menu">
-                <a class="dropdown-item" href="index.html">🏠 Home Page</a>
-                <a class="dropdown-item" href="profile.html">👤 My Profile</a>
-                <a class="dropdown-item" href="dashboard.html?studio=1">📶 Creator Studio</a>
-                ${adminItem}
-                <div class="dropdown-divider"></div>
-                <div class="dropdown-item logout" id="dropdown-logout-btn">🚪 Log Out</div>
+            <button id="nav-theme-toggle" class="nav-theme-toggle-btn" aria-label="Toggle theme">
+                <span class="theme-icon-light">☀️</span>
+                <span class="theme-icon-dark">🌙</span>
+            </button>
+            <div class="profile-trigger-wrapper" style="position: relative; display: inline-block;">
+                <div class="profile-trigger" id="profile-trigger-btn">
+                    <span>👤 ${fullName}</span>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="dropdown-menu" id="profile-dropdown-menu">
+                    <a class="dropdown-item" href="index.html">🏠 Home Page</a>
+                    <a class="dropdown-item" href="profile.html">👤 My Profile</a>
+                    <a class="dropdown-item" href="dashboard.html?studio=1">📶 Creator Studio</a>
+                    ${adminItem}
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-item logout" id="dropdown-logout-btn">🚪 Log Out</div>
+                </div>
             </div>
         `;
 
@@ -232,9 +241,6 @@ async function injectUnifiedDropdown(containerSelector) {
             // Studio/Admin/Profile navbars - keep logo and nav-toggle, replace others inside nav-links
             const navLinks = container.querySelector('.nav-links');
             if (navLinks) {
-                // Clear existing nav links (like Back to Studio, etc) except we might want to keep some?
-                // Actually, let's just append the dropdown container to navLinks.
-                // Wait, previously we cleared the whole container. So let's clear navLinks and append.
                 navLinks.innerHTML = '';
                 navLinks.appendChild(dropdownContainer);
             } else {
@@ -247,6 +253,7 @@ async function injectUnifiedDropdown(containerSelector) {
         // Bind dropdown toggles
         const trigger = dropdownContainer.querySelector('#profile-trigger-btn');
         const menu = dropdownContainer.querySelector('#profile-dropdown-menu');
+        const themeBtn = dropdownContainer.querySelector('#nav-theme-toggle');
 
         trigger.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -256,9 +263,31 @@ async function injectUnifiedDropdown(containerSelector) {
 
         // Click outside to close
         document.addEventListener('click', () => {
-            trigger.classList.remove('active');
-            menu.classList.remove('show');
+            if (trigger) trigger.classList.remove('active');
+            if (menu) menu.classList.remove('show');
         });
+
+        // Handle Theme Toggle inside navigation
+        if (themeBtn) {
+            themeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const currentTheme = localStorage.getItem('theme') || 'dark';
+                if (currentTheme === 'light') {
+                    document.documentElement.removeAttribute('data-theme');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                }
+                // Sync page checkbox if it exists
+                const checkbox = document.getElementById('theme-checkbox');
+                if (checkbox) {
+                    checkbox.checked = (localStorage.getItem('theme') === 'light');
+                }
+                // Dispatch global event for reactive systems (e.g. charts)
+                window.dispatchEvent(new Event('themechange'));
+            });
+        }
 
         // Handle Logout inside dropdown
         dropdownContainer.querySelector('#dropdown-logout-btn').addEventListener('click', async (e) => {

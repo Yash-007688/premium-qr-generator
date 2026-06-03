@@ -16,6 +16,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="auth-body">
+    <!-- Floating Theme Toggle -->
+    <button id="floating-theme-toggle" class="nav-theme-toggle-btn" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000;" aria-label="Toggle theme">
+        <span class="theme-icon-light">☀️</span>
+        <span class="theme-icon-dark">🌙</span>
+    </button>
     
     <div class="suspended-container">
         <span class="suspended-icon">🚫</span>
@@ -26,7 +31,7 @@
         </div>
 
         <p class="suspended-text" style="margin: 0.5rem 0;">
-            Reason: <strong id="banned-reason" style="color: white;">--</strong>
+            Reason: <strong id="banned-reason" style="color: var(--text-main);">--</strong>
         </p>
 
         <p class="suspended-text" id="banned-details" style="font-size: 0.9rem; background: rgba(0,0,0,0.25); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); line-height: 1.5;">
@@ -87,7 +92,7 @@
                     const minutes = Math.floor((totalSecs % 3600) / 60);
                     const seconds = totalSecs % 60;
                     
-                    detailsEl.innerHTML = `Suspension lifts in: <strong style="color:white; font-size:1.05rem;">${days}d ${hours}h ${minutes}m ${seconds}s</strong><br>` +
+                    detailsEl.innerHTML = `Suspension lifts in: <strong style="color:var(--text-main); font-size:1.05rem;">${days}d ${hours}h ${minutes}m ${seconds}s</strong><br>` +
                                            `<span style="font-size: 0.78rem; color: var(--text-muted); display:inline-block; margin-top:0.4rem;">Lift date: ${expiry.toLocaleString()}</span>`;
                 };
                 
@@ -103,6 +108,21 @@
                 await supabaseClient.auth.signOut();
             } catch (err) {
                 console.error("Token revocation failed:", err);
+            }
+
+            // Floating Theme Toggle Logic
+            const toggle = document.getElementById('floating-theme-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    const currentTheme = localStorage.getItem('theme') || 'dark';
+                    if (currentTheme === 'light') {
+                        document.documentElement.removeAttribute('data-theme');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.documentElement.setAttribute('data-theme', 'light');
+                        localStorage.setItem('theme', 'light');
+                    }
+                });
             }
         });
     </script>

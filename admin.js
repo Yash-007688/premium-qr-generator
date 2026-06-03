@@ -22,6 +22,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('refresh-btn').addEventListener('click', fetchData);
     document.getElementById('graph-time-range').addEventListener('change', processAndDrawCharts);
     document.getElementById('graph-sort-order').addEventListener('change', processAndDrawCharts);
+    window.addEventListener('themechange', processAndDrawCharts);
 
     // Bind Advanced Ban Modal Interactivity
     const modalOverlay = document.getElementById('ban-modal-overlay');
@@ -203,6 +204,11 @@ function processAndDrawCharts() {
     const rangeVal = document.getElementById('graph-time-range').value;
     const sortVal = document.getElementById('graph-sort-order').value;
 
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const textColor = isLight ? '#475569' : '#94a3b8';
+    const gridColor = isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.05)';
+    const borderColor = isLight ? '#ffffff' : '#1e293b';
+
     const now = new Date();
     let thresholdDate = null;
     if (rangeVal === '7') {
@@ -302,12 +308,12 @@ function processAndDrawCharts() {
             },
             scales: {
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, stepSize: 1, precision: 0 }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#94a3b8' }
+                    ticks: { color: textColor }
                 }
             }
         }
@@ -322,7 +328,7 @@ function processAndDrawCharts() {
             datasets: [{
                 data: [wifiCount, hotspotCount, linkCount],
                 backgroundColor: ['#6366f1', '#f97316', '#a855f7'],
-                borderColor: '#1e293b',
+                borderColor: borderColor,
                 borderWidth: 2
             }]
         },
@@ -332,7 +338,7 @@ function processAndDrawCharts() {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#94a3b8', font: { size: 11, weight: '500' } }
+                    labels: { color: textColor, font: { size: 11, weight: '500' } }
                 }
             },
             cutout: '65%'

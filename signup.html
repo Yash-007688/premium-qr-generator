@@ -17,6 +17,11 @@
 
 </head>
 <body class="auth-body">
+    <!-- Floating Theme Toggle -->
+    <button id="floating-theme-toggle" class="nav-theme-toggle-btn" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000;" aria-label="Toggle theme">
+        <span class="theme-icon-light">☀️</span>
+        <span class="theme-icon-dark">🌙</span>
+    </button>
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-brand">
@@ -67,5 +72,22 @@
     <script src="supabaseClient.js"></script>
     <script src="auth-utils.js"></script>
     <script src="auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('floating-theme-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    const currentTheme = localStorage.getItem('theme') || 'dark';
+                    if (currentTheme === 'light') {
+                        document.documentElement.removeAttribute('data-theme');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.documentElement.setAttribute('data-theme', 'light');
+                        localStorage.setItem('theme', 'light');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

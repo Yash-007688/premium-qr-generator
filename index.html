@@ -224,6 +224,12 @@
                     document.documentElement.removeAttribute('data-theme');
                     localStorage.setItem('theme', 'dark');
                 }
+                window.dispatchEvent(new Event('themechange'));
+            });
+
+            window.addEventListener('themechange', () => {
+                const updatedTheme = localStorage.getItem('theme') || 'dark';
+                checkbox.checked = (updatedTheme === 'light');
             });
         });
     </script>
