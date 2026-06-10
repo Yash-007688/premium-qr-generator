@@ -1,4 +1,7 @@
 // 0. Protect Dashboard & Handle Logout
+let userTier = 'free';
+let uploadedLogoDataUrl = null;
+
 window.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
 
@@ -21,10 +24,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     await ensureUserProfile(session);
 
-    // Fetch user profile status
+    // Fetch user profile status and tier
     const { data: profile, error } = await supabaseClient
         .from('profiles')
-        .select('role, is_banned')
+        .select('role, is_banned, tier')
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -34,6 +37,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    userTier = profile?.tier || 'free';
     const role = profile?.role || 'user';
 
     // Inject the Unified Glassmorphic Profile Dropdown
@@ -45,7 +49,221 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.location.replace('admin.html');
         }
     }
+
+    // Configure initial UI based on user's membership tier
+    updateUIForTier();
+    setupLocksAndInterceptors();
+    setupUpgradeModal();
+    setupLogoUpload();
+
+    // Generate initial preview once user is loaded
+    generatePreview();
 });
+
+// Reactively handle tier changes from the navigation bar
+window.addEventListener('tierchange', (e) => {
+    userTier = e.detail.tier;
+    updateUIForTier();
+    generatePreview();
+});
+
+function updateUIForTier() {
+    const lockOverlaySavage = document.querySelector('[data-template="savage"] .lock-overlay');
+    const lockOverlayArtDeco = document.querySelector('[data-template="artdeco"] .lock-overlay');
+    const analyticsOverlay = document.getElementById('analytics-lock-overlay');
+    const advancedCustomSection = document.querySelector('.advanced-customization');
+    const gradientContainer = document.getElementById('gradient-color-picker-group');
+    const enableGradientCheckbox = document.getElementById('enable-gradient');
+    const logoInput = document.getElementById('logo-upload');
+    const dotShapeSelect = document.getElementById('dot-shape');
+    const eyeShapeSelect = document.getElementById('eye-shape');
+
+    if (userTier === 'free') {
+        // Show lock icons
+        if (lockOverlaySavage) lockOverlaySavage.style.display = 'flex';
+        if (lockOverlayArtDeco) lockOverlayArtDeco.style.display = 'flex';
+        
+        // Show analytics lock overlay
+        if (analyticsOverlay) analyticsOverlay.style.display = 'flex';
+
+        // Add visual lockers to inputs
+        document.querySelectorAll('.premium-lock-trigger').forEach(el => {
+            el.classList.add('premium-locked-item');
+        });
+
+        // Revert premium templates to minimalist
+        if (currentTemplate === 'savage' || currentTemplate === 'artdeco') {
+            currentTemplate = 'minimalist';
+            document.querySelectorAll('.template-option').forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-template="minimalist"]').classList.add('active');
+        }
+
+        // Disable and uncheck premium fields
+        if (enableGradientCheckbox) {
+            enableGradientCheckbox.checked = false;
+            enableGradientCheckbox.disabled = true;
+        }
+        if (gradientContainer) gradientContainer.style.display = 'none';
+
+        if (logoInput) logoInput.disabled = true;
+        if (dotShapeSelect) {
+            dotShapeSelect.value = 'rounded';
+            dotShapeSelect.disabled = true;
+        }
+        if (eyeShapeSelect) {
+            eyeShapeSelect.value = 'extra-rounded';
+            eyeShapeSelect.disabled = true;
+        }
+
+        // Revert Dynamic URL to static
+        const staticRadio = document.querySelector('input[name="qr-type-toggle"][value="static"]');
+        if (staticRadio) staticRadio.checked = true;
+        const dynamicRadio = document.getElementById('dynamic-toggle-radio');
+        if (dynamicRadio) dynamicRadio.disabled = true;
+
+    } else {
+        // Unlock EVERYTHING
+        if (lockOverlaySavage) lockOverlaySavage.style.display = 'none';
+        if (lockOverlayArtDeco) lockOverlayArtDeco.style.display = 'none';
+        if (analyticsOverlay) analyticsOverlay.style.display = 'none';
+
+        document.querySelectorAll('.premium-lock-trigger').forEach(el => {
+            el.classList.remove('premium-locked-item');
+        });
+
+        if (enableGradientCheckbox) enableGradientCheckbox.disabled = false;
+        if (logoInput) logoInput.disabled = false;
+        if (dotShapeSelect) dotShapeSelect.disabled = false;
+        if (eyeShapeSelect) eyeShapeSelect.disabled = false;
+        
+        const dynamicRadio = document.getElementById('dynamic-toggle-radio');
+        if (dynamicRadio) dynamicRadio.disabled = false;
+    }
+}
+
+function setupLocksAndInterceptors() {
+    // Intercept template clicks
+    document.querySelectorAll('.template-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+            if (userTier === 'free' && option.classList.contains('premium-lock-trigger')) {
+                e.stopPropagation();
+                e.preventDefault();
+                showUpgradeModal(option.getAttribute('data-feature'));
+            }
+        });
+    });
+
+    // Intercept premium option clicks
+    document.querySelectorAll('.premium-lock-trigger').forEach(el => {
+        el.addEventListener('click', (e) => {
+            if (userTier === 'free') {
+                e.stopPropagation();
+                e.preventDefault();
+                showUpgradeModal(el.getAttribute('data-feature'));
+            }
+        });
+    });
+}
+
+function setupUpgradeModal() {
+    const modal = document.getElementById('upgrade-modal');
+    const closeBtn = document.getElementById('close-modal-btn');
+    const proSelect = document.getElementById('pro-tier-select');
+    const entSelect = document.getElementById('ent-tier-select');
+    const submitBtn = document.getElementById('submit-upgrade-sim-btn');
+    let selectedTier = 'pro';
+
+    closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('show');
+    });
+
+    proSelect.addEventListener('click', () => {
+        proSelect.classList.add('active');
+        entSelect.classList.remove('active');
+        selectedTier = 'pro';
+    });
+
+    entSelect.addEventListener('click', () => {
+        entSelect.classList.add('active');
+        proSelect.classList.remove('active');
+        selectedTier = 'enterprise';
+    });
+
+    submitBtn.addEventListener('click', async () => {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Processing checkout simulation...";
+
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ tier: selectedTier })
+                    .eq('id', session.user.id);
+
+                if (error) throw error;
+
+                // Sync Navbar Dropdown Selection Element if visible
+                const navSelect = document.getElementById('navbar-tier-select');
+                if (navSelect) {
+                    navSelect.value = selectedTier;
+                }
+
+                userTier = selectedTier;
+                updateUIForTier();
+                generatePreview();
+
+                modal.classList.remove('show');
+                alert(`Congratulations! You have successfully upgraded to ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}! All premium controls are now unlocked.`);
+            }
+        } catch (err) {
+            console.error("Upgrade error:", err);
+            alert("Upgrade failed: " + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Complete Upgrade (Simulated)";
+        }
+    });
+
+    // Handle analytics upgrade trigger click
+    document.getElementById('analytics-upgrade-trigger').addEventListener('click', () => showUpgradeModal('Analytics Dashboard'));
+}
+
+function showUpgradeModal(featureName = '') {
+    const modal = document.getElementById('upgrade-modal');
+    if (featureName) {
+        modal.querySelector('.modal-header-premium p').innerText = `Unlock ${featureName} and more with premium options`;
+    } else {
+        modal.querySelector('.modal-header-premium p').innerText = `Unlock the full potential of your Creator Studio`;
+    }
+    modal.classList.add('show');
+}
+
+function setupLogoUpload() {
+    const logoInput = document.getElementById('logo-upload');
+    const removeBtn = document.getElementById('remove-logo-btn');
+
+    logoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            uploadedLogoDataUrl = event.target.result;
+            removeBtn.style.display = 'block';
+            generatePreview();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    removeBtn.addEventListener('click', () => {
+        uploadedLogoDataUrl = null;
+        logoInput.value = '';
+        removeBtn.style.display = 'none';
+        generatePreview();
+    });
+}
 
 const logoutBtn = document.querySelector('.logout-btn');
 if (logoutBtn) {
@@ -66,9 +284,20 @@ tabs.forEach(tab => {
         formSections.forEach(f => f.classList.remove('active'));
         
         tab.classList.add('active');
-        const targetId = tab.getAttribute('data-tab') + '-form';
-        document.getElementById(targetId).classList.add('active');
-        generatePreview();
+        const activeTab = tab.getAttribute('data-tab');
+
+        if (activeTab === 'analytics') {
+            document.getElementById('preview-stage').style.display = 'none';
+            document.getElementById('analytics-stage').style.display = 'block';
+            // Hide control forms
+            formSections.forEach(f => f.classList.remove('active'));
+        } else {
+            document.getElementById('preview-stage').style.display = 'flex';
+            document.getElementById('analytics-stage').style.display = 'none';
+            const targetId = activeTab + '-form';
+            document.getElementById(targetId).classList.add('active');
+            generatePreview();
+        }
     });
 });
 
@@ -117,6 +346,9 @@ const templates = document.querySelectorAll('.template-option');
 
 templates.forEach(template => {
     template.addEventListener('click', () => {
+        if (userTier === 'free' && template.classList.contains('premium-lock-trigger')) {
+            return; // Intercepted
+        }
         templates.forEach(t => t.classList.remove('active'));
         template.classList.add('active');
         currentTemplate = template.getAttribute('data-template');
@@ -127,12 +359,27 @@ templates.forEach(template => {
 // Automatically trigger preview when colors change
 document.getElementById('dot-color').addEventListener('input', generatePreview);
 document.getElementById('bg-color').addEventListener('input', generatePreview);
+document.getElementById('dot-color-2').addEventListener('input', generatePreview);
+
 // Live update poster text
 document.getElementById('poster-subtitle').addEventListener('input', generatePreview);
 // Live update Wi-Fi / Hotspot fields
 document.getElementById('ssid').addEventListener('input', generatePreview);
 document.getElementById('password').addEventListener('input', generatePreview);
 document.getElementById('encryption').addEventListener('change', generatePreview);
+
+// Advanced custom styling inputs
+document.getElementById('dot-shape').addEventListener('change', generatePreview);
+document.getElementById('eye-shape').addEventListener('change', generatePreview);
+document.getElementById('enable-gradient').addEventListener('change', function() {
+    const endColorGroup = document.getElementById('gradient-color-picker-group');
+    if (this.checked) {
+        endColorGroup.style.display = 'block';
+    } else {
+        endColorGroup.style.display = 'none';
+    }
+    generatePreview();
+});
 
 // 3. QR Code Initialization
 const qrCode = new QRCodeStyling({
@@ -155,6 +402,8 @@ const qrCode = new QRCodeStyling({
 // 4. Generate Data and Draw
 async function generatePreview() {
     const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
+    if (activeTab === 'analytics') return;
+    
     let qrData = '';
 
     const escapeStr = (s) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/:/g, '\\:');
@@ -166,27 +415,68 @@ async function generatePreview() {
         if (!ssid) return;
         qrData = `WIFI:T:${encryption};S:${escapeStr(ssid)};P:${escapeStr(password)};H:false;;`;
     } else {
-        qrData = document.getElementById('url').value.trim();
-        if (!qrData) return;
+        const urlInput = document.getElementById('url').value.trim();
+        if (!urlInput) return;
+
+        const isDynamic = document.querySelector('input[name="qr-type-toggle"]:checked')?.value === 'dynamic';
+        if (isDynamic && userTier !== 'free') {
+            // Simulated Short/Dynamic URL redirect
+            const randomHash = Math.random().toString(36).substring(2, 8);
+            qrData = `https://qrweb.app/${randomHash}`;
+        } else {
+            qrData = urlInput;
+        }
     }
 
     const dotColor = document.getElementById('dot-color').value;
     const bgColor = document.getElementById('bg-color').value;
+    const dotColor2 = document.getElementById('dot-color-2').value;
+    const useGradient = document.getElementById('enable-gradient').checked && userTier !== 'free';
 
-    // Adjust specific template settings
-    let qrType = "rounded";
-    if (currentTemplate === 'savage') qrType = "classy";
-    if (currentTemplate === 'artdeco') qrType = "dots";
+    // Advanced customizations (Pro features)
+    let dotType = document.getElementById('dot-shape').value;
+    let eyeType = document.getElementById('eye-shape').value;
+
+    if (userTier === 'free') {
+        // Reset/ignore premium modifications
+        dotType = "rounded";
+        if (currentTemplate === 'savage') dotType = "classy";
+        if (currentTemplate === 'artdeco') dotType = "dots";
+        eyeType = "extra-rounded";
+    }
+
+    // Config gradient options if enabled
+    let dotsOptions = {
+        color: dotColor,
+        type: dotType
+    };
+
+    if (useGradient) {
+        dotsOptions.gradient = {
+            type: "linear",
+            rotation: 45,
+            colorStops: [
+                { offset: 0, color: dotColor },
+                { offset: 1, color: dotColor2 }
+            ]
+        };
+    }
 
     // Update the QR Library
     qrCode.update({
         data: qrData,
-        dotsOptions: {
-            color: dotColor,
-            type: qrType
-        },
+        dotsOptions: dotsOptions,
         backgroundOptions: {
             color: bgColor
+        },
+        cornersSquareOptions: {
+            type: eyeType
+        },
+        image: (uploadedLogoDataUrl && userTier !== 'free') ? uploadedLogoDataUrl : "",
+        imageOptions: {
+            crossOrigin: "anonymous",
+            margin: 6,
+            imageSize: 0.45
         }
     });
 
@@ -232,6 +522,14 @@ function drawPoster() {
     ctx.shadowBlur = 20;
     ctx.drawImage(rawCanvas, offsetX, offsetY, qrW, qrH);
     ctx.shadowBlur = 0; // Reset shadow
+
+    // Inject Watermark for Free Tier Users
+    if (userTier === 'free') {
+        ctx.fillStyle = currentTemplate === 'minimalist' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
+        ctx.font = "bold 18px 'Inter', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("✨ Created with QR Web", w / 2, h - 35);
+    }
 
     // Show download button once ready
     document.getElementById('download-btn').style.display = 'block';
@@ -341,6 +639,33 @@ document.getElementById('generate-btn').addEventListener('click', generatePrevie
 
 // Download Button Event
 document.getElementById('download-btn').addEventListener('click', async () => {
+    // 1. Fetch current profile limits
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            // Query current count of saved posters
+            const { count: wifiCount } = await supabaseClient
+                .from('wifi_qrs')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', session.user.id);
+            const { count: linkCount } = await supabaseClient
+                .from('link_qrs')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', session.user.id);
+
+            const totalSaved = (wifiCount || 0) + (linkCount || 0);
+
+            // Limit Enforcement: Free users are maxed at 3 saves/downloads
+            if (userTier === 'free' && totalSaved >= 3) {
+                alert("You have reached the limit of 3 saved QR codes for the Free tier. Please upgrade to Pro for increased limits!");
+                showUpgradeModal('Saved QR Codes Limits');
+                return;
+            }
+        }
+    } catch (err) {
+        console.error("Error enforcing limits:", err);
+    }
+
     const canvas = document.getElementById('poster-canvas');
     const imageData = canvas.toDataURL('image/png');
     

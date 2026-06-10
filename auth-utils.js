@@ -171,6 +171,79 @@ async function requireAdmin() {
     return true;
 }
 
+// === TOKEN SYSTEM HELPERS ===
+async function getTokenBalance(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('tokens, total_tokens_used')
+            .eq('id', userId)
+            .maybeSingle();
+        if (error || !data) return { tokens: 0, total_tokens_used: 0 };
+        return { tokens: data.tokens ?? 0, total_tokens_used: data.total_tokens_used ?? 0 };
+    } catch (e) {
+        console.error('Failed to fetch token balance:', e);
+        return { tokens: 0, total_tokens_used: 0 };
+    }
+}
+
+async function deductTokens(userId, amount) {
+    try {
+        const { tokens: currentBalance } = await getTokenBalance(userId);
+        if (currentBalance < amount) {
+            return { success: false, newBalance: currentBalance, error: 'Insufficient tokens' };
+        }
+        const newBalance = currentBalance - amount;
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('total_tokens_used')
+            .eq('id', userId)
+            .maybeSingle();
+        const currentUsed = profile?.total_tokens_used ?? 0;
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ tokens: newBalance, total_tokens_used: currentUsed + amount })
+            .eq('id', userId);
+        if (error) return { success: false, newBalance: currentBalance, error: error.message };
+        return { success: true, newBalance, error: null };
+    } catch (e) {
+        console.error('Failed to deduct tokens:', e);
+        return { success: false, newBalance: 0, error: e.message };
+    }
+}
+
+async function addTokens(userId, amount) {
+    try {
+        const { tokens: currentBalance } = await getTokenBalance(userId);
+        const newBalance = currentBalance + amount;
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ tokens: newBalance })
+            .eq('id', userId);
+        if (error) return { success: false, error: error.message };
+        return { success: true, newBalance, error: null };
+    } catch (e) {
+        console.error('Failed to add tokens:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+function updateNavbarTokenBadge(balance) {
+    const badge = document.getElementById('navbar-token-badge');
+    if (!badge) return;
+    const countEl = badge.querySelector('.token-count');
+    if (countEl) countEl.textContent = balance;
+    // Add low-balance warning class
+    if (balance < 10) {
+        badge.classList.add('low-balance');
+    } else {
+        badge.classList.remove('low-balance');
+    }
+    // Trigger deduction animation
+    badge.classList.add('deducting');
+    setTimeout(() => badge.classList.remove('deducting'), 600);
+}
+
 // === CENTRALIZED UNIFIED PROFILE DROPDOWN INJECTOR ===
 async function injectUnifiedDropdown(containerSelector) {
     const container = document.querySelector(containerSelector);
@@ -182,7 +255,7 @@ async function injectUnifiedDropdown(containerSelector) {
 
         const { data: profile, error } = await supabaseClient
             .from('profiles')
-            .select('id, full_name, role, is_banned, ban_reason, ban_type, banned_until')
+            .select('id, full_name, role, is_banned, ban_reason, ban_type, banned_until, tokens, total_tokens_used, tier')
             .eq('id', session.user.id)
             .maybeSingle();
 
@@ -192,6 +265,7 @@ async function injectUnifiedDropdown(containerSelector) {
         const activeProfile = check.profile;
         const fullName = activeProfile?.full_name || session.user.email.split('@')[0];
         const isAdmin = activeProfile?.role === 'admin';
+        const userTier = activeProfile?.tier || 'free';
 
         const meta = session.user.user_metadata || {};
         const avatarUrl = meta.avatar_url || meta.picture || '';
@@ -208,8 +282,22 @@ async function injectUnifiedDropdown(containerSelector) {
         dropdownContainer.style.gap = '0.8rem';
 
         const adminItem = isAdmin ? `<a class="dropdown-item" href="admin.html">✨ Admin Panel</a>` : '';
+        const tokenBalance = activeProfile?.tokens ?? 0;
+        const tokenBadgeClass = tokenBalance < 10 ? 'token-badge low-balance' : 'token-badge';
 
         dropdownContainer.innerHTML = `
+            <div class="navbar-tier-selector-container" id="nav-tier-selector-container" title="Current Membership Tier">
+                <span class="tier-icon">🏆</span>
+                <select class="tier-selector-select" id="navbar-tier-select">
+                    <option value="free" ${userTier === 'free' ? 'selected' : ''}>Free</option>
+                    <option value="pro" ${userTier === 'pro' ? 'selected' : ''}>Pro ✨</option>
+                    <option value="enterprise" ${userTier === 'enterprise' ? 'selected' : ''}>Enterprise 🏆</option>
+                </select>
+            </div>
+            <div class="${tokenBadgeClass}" id="navbar-token-badge" title="Your token balance">
+                <span class="token-icon">🪙</span>
+                <span class="token-count">${tokenBalance}</span>
+            </div>
             <button id="nav-theme-toggle" class="nav-theme-toggle-btn" aria-label="Toggle theme">
                 <span class="theme-icon-light">☀️</span>
                 <span class="theme-icon-dark">🌙</span>
@@ -262,6 +350,27 @@ async function injectUnifiedDropdown(containerSelector) {
         const trigger = dropdownContainer.querySelector('#profile-trigger-btn');
         const menu = dropdownContainer.querySelector('#profile-dropdown-menu');
         const themeBtn = dropdownContainer.querySelector('#nav-theme-toggle');
+        const tierSelect = dropdownContainer.querySelector('#navbar-tier-select');
+
+        // Handle Tier Change inside navigation dropdown
+        if (tierSelect) {
+            tierSelect.addEventListener('change', async function() {
+                const newTier = this.value;
+                try {
+                    const { error } = await supabaseClient
+                        .from('profiles')
+                        .update({ tier: newTier })
+                        .eq('id', session.user.id);
+                    if (error) throw error;
+                    
+                    // Dispatch global event for reactive UI updates
+                    window.dispatchEvent(new CustomEvent('tierchange', { detail: { tier: newTier } }));
+                } catch (err) {
+                    console.error("Failed to update tier:", err);
+                    alert("Error updating membership tier: " + err.message);
+                }
+            });
+        }
 
         trigger.addEventListener('click', (e) => {
             e.stopPropagation();

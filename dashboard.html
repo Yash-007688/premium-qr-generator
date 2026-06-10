@@ -45,10 +45,17 @@
                     </div>
                 </div>
 
+                <!-- Persistent Token Display -->
+                <div class="studio-token-widget" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); padding: 0.65rem 0.85rem; border-radius: 0.65rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);"><span style="margin-right: 0.25rem;">🪙</span> Token Balance: <span id="studio-token-balance" style="font-weight:700; color:#fb923c;">loading...</span></span>
+                    <button id="studio-buy-tokens-btn" class="secondary-btn" style="width: auto; padding: 0.25rem 0.65rem; font-size: 0.75rem; margin: 0; background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3);">+ Buy Tokens</button>
+                </div>
+
                 <!-- Tab Navigation -->
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="wifi">Wi-Fi / Hotspot</button>
                     <button class="tab-btn" data-tab="url">Website URL</button>
+                    <button class="tab-btn" data-tab="analytics" id="analytics-tab-btn">📈 Analytics</button>
                 </div>
 
                 <!-- Wi-Fi / Hotspot Form -->
@@ -88,6 +95,29 @@
                         <label for="url">Website URL</label>
                         <input type="url" id="url" class="form-input" placeholder="https://example.com" value="https://google.com">
                     </div>
+                    
+                    <!-- Dynamic vs Static Toggle -->
+                    <div class="input-group dynamic-toggle-group">
+                        <label>QR Code Type</label>
+                        <div class="type-toggle-wrapper">
+                            <label class="type-toggle-option">
+                                <input type="radio" name="qr-type-toggle" value="static" checked>
+                                <div class="type-card">
+                                    <span class="type-icon">📄</span>
+                                    <span class="type-name">Static</span>
+                                    <span class="type-desc">Free &amp; Permanent</span>
+                                </div>
+                            </label>
+                            <label class="type-toggle-option premium-lock-trigger" data-feature="Dynamic QR Codes">
+                                <input type="radio" name="qr-type-toggle" value="dynamic" id="dynamic-toggle-radio">
+                                <div class="type-card">
+                                    <span class="type-icon">⚡</span>
+                                    <span class="type-name">Dynamic <span class="badge-pro">PRO</span></span>
+                                    <span class="type-desc">Editable (1 Token)</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Colors Section -->
@@ -107,6 +137,21 @@
                     </div>
                 </div>
 
+                <!-- Gradient Options (Pro) -->
+                <div class="input-group premium-lock-trigger" data-feature="Gradient Colors" style="margin-top: 1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label for="enable-gradient" style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="enable-gradient"> Enable Gradient Color <span class="badge-pro">PRO</span> <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(1 Token)</span>
+                        </label>
+                    </div>
+                    <div id="gradient-color-picker-group" class="color-picker-group" style="display:none; margin-top:0.5rem;">
+                        <label for="dot-color-2">Gradient End Color</label>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="dot-color-2" value="#4f46e5">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Template Section -->
                 <div class="section-title">Select Template</div>
                 <div class="template-selector">
@@ -114,13 +159,46 @@
                         <div class="template-preview minimalist-preview"></div>
                         <span>Minimalist</span>
                     </div>
-                    <div class="template-option" data-template="savage">
-                        <div class="template-preview savage-preview"></div>
-                        <span>Savage Neon</span>
+                    <div class="template-option premium-lock-trigger" data-template="savage" data-feature="Savage Neon Template">
+                        <div class="template-preview savage-preview">
+                            <span class="lock-overlay">🔒</span>
+                        </div>
+                        <span>Savage Neon <span class="badge-pro">PRO</span> <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(1 Token)</span></span>
                     </div>
-                    <div class="template-option" data-template="artdeco">
-                        <div class="template-preview artdeco-preview"></div>
-                        <span>Art Deco Gold</span>
+                    <div class="template-option premium-lock-trigger" data-template="artdeco" data-feature="Art Deco Gold Template">
+                        <div class="template-preview artdeco-preview">
+                            <span class="lock-overlay">🔒</span>
+                        </div>
+                        <span>Art Deco Gold <span class="badge-pro">PRO</span> <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(1 Token)</span></span>
+                    </div>
+                </div>
+
+                <!-- Advanced Customization Section (Pro) -->
+                <div class="section-title">Advanced Customization <span class="badge-pro">PRO</span> <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(1 Token)</span></div>
+                <div class="advanced-customization premium-lock-trigger" data-feature="Advanced QR Shapes & Logo">
+                    <div class="input-group">
+                        <label for="dot-shape">QR Dots Style</label>
+                        <select id="dot-shape" class="form-input">
+                            <option value="rounded" selected>Rounded (Standard)</option>
+                            <option value="square">Square</option>
+                            <option value="dots">Dots</option>
+                            <option value="classy">Classy</option>
+                            <option value="classy-rounded">Classy Rounded</option>
+                            <option value="extra-rounded">Extra Rounded</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-top:0.8rem;">
+                        <label for="eye-shape">Eye Frame Style</label>
+                        <select id="eye-shape" class="form-input">
+                            <option value="extra-rounded" selected>Extra Rounded</option>
+                            <option value="square">Square</option>
+                            <option value="dot">Dot</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-top:0.8rem;">
+                        <label for="logo-upload">Logo Upload (JPG/PNG)</label>
+                        <input type="file" id="logo-upload" accept="image/*" class="form-input" style="padding:0.4rem;">
+                        <button id="remove-logo-btn" class="secondary-btn" style="display:none; padding:0.4rem 0.8rem; font-size:0.75rem; margin-top:0.3rem;">Remove Logo</button>
                     </div>
                 </div>
 
@@ -138,7 +216,7 @@
 
             <!-- Preview Panel -->
             <main class="preview-panel">
-                <div class="preview-container">
+                <div class="preview-container" id="preview-stage">
                     <p class="preview-hint">Live Preview</p>
                     
                     <!-- Hidden div for library to generate the raw QR code -->
@@ -149,13 +227,183 @@
 
                     <!-- Centralized Action Station under Canvas -->
                     <div class="preview-actions">
+                        <!-- Estimated Token Cost display -->
+                        <div class="estimated-token-cost-container" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); padding: 0.65rem; border-radius: 0.5rem; text-align: center; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-main); display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                            <span>Estimated Token Cost:</span>
+                            <strong id="est-token-cost" style="color: #fb923c; font-weight: 700; font-size: 0.95rem;">0 Tokens</strong>
+                        </div>
                         <button id="generate-btn" class="primary-btn">Generate Preview</button>
                         <button id="download-btn" class="secondary-btn" style="display: none;">Download Poster</button>
+                    </div>
+                </div>
+
+                <!-- Analytics Dashboard View -->
+                <div class="analytics-view-container" id="analytics-stage" style="display:none; width:100%; height:100%; overflow-y:auto; padding:2rem;">
+                    <div class="analytics-header">
+                        <h2>📈 QR Scan Analytics</h2>
+                        <p class="section-subtitle">Real-time scan tracking and visitor insights</p>
+                    </div>
+
+                    <div class="analytics-grid">
+                        <div class="stat-card">
+                            <span class="stat-icon">👁️</span>
+                            <div class="stat-val" id="stat-total-scans">2,482</div>
+                            <div class="stat-lbl">Total Scans</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">👥</span>
+                            <div class="stat-val" id="stat-unique-scans">1,894</div>
+                            <div class="stat-lbl">Unique Visitors</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">📍</span>
+                            <div class="stat-val" id="stat-top-loc">London, UK</div>
+                            <div class="stat-lbl">Top Location</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section" style="margin-top:2rem;">
+                        <h3>Scan Frequency over Time</h3>
+                        <div class="dummy-chart-container">
+                            <div class="bar-chart">
+                                <div class="bar" style="height: 30%;" data-lbl="Mon"><span>320</span></div>
+                                <div class="bar" style="height: 45%;" data-lbl="Tue"><span>480</span></div>
+                                <div class="bar" style="height: 70%;" data-lbl="Wed"><span>710</span></div>
+                                <div class="bar" style="height: 55%;" data-lbl="Thu"><span>560</span></div>
+                                <div class="bar" style="height: 85%;" data-lbl="Fri"><span>920</span></div>
+                                <div class="bar" style="height: 95%;" data-lbl="Sat"><span>1040</span></div>
+                                <div class="bar" style="height: 60%;" data-lbl="Sun"><span>650</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="device-section" style="margin-top:2rem; display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+                        <div class="stat-card-sub">
+                            <h4>📱 Devices &amp; Browsers</h4>
+                            <ul class="stat-list">
+                                <li><span>iOS (Safari)</span><strong>64%</strong></li>
+                                <li><span>Android (Chrome)</span><strong>28%</strong></li>
+                                <li><span>Others</span><strong>8%</strong></li>
+                            </ul>
+                        </div>
+                        <div class="stat-card-sub">
+                            <h4>🌍 Geographic Locations</h4>
+                            <ul class="stat-list">
+                                <li><span>United Kingdom</span><strong>42%</strong></li>
+                                <li><span>United States</span><strong>31%</strong></li>
+                                <li><span>Germany</span><strong>15%</strong></li>
+                                <li><span>Others</span><strong>12%</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Blurred Overlay for Free Users -->
+                    <div class="analytics-lock-overlay" id="analytics-lock-overlay">
+                        <div class="lock-message-card">
+                            <div class="lock-icon-large">🔒</div>
+                            <h3>Unlock Advanced Scan Analytics</h3>
+                            <p>Track your campaign performance with real-time scan metrics, geographic data, and device insights.</p>
+                            <button class="upgrade-btn-modal" id="analytics-upgrade-trigger">Upgrade to Pro Now</button>
+                        </div>
                     </div>
                 </div>
             </main>
         </div>
 
+    </div>
+
+    <!-- Sleek Upgrade Modal -->
+    <div class="premium-modal-backdrop" id="upgrade-modal">
+        <div class="premium-modal-card">
+            <button class="modal-close-btn" id="close-modal-btn">&times;</button>
+            
+            <!-- Tab Headers to Switch between Subs and Token Packs -->
+            <div class="modal-tab-headers" style="display:flex; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:1.5rem; margin-top:-0.5rem;">
+                <button class="modal-tab-btn active" id="tab-upgrade-subs" style="flex:1; background:none; border:none; color:var(--text-main); padding:0.8rem; font-weight:700; border-bottom:2px solid var(--primary); cursor:pointer; font-size:0.95rem;">Upgrade Subscription</button>
+                <button class="modal-tab-btn" id="tab-buy-tokens" style="flex:1; background:none; border:none; color:var(--text-muted); padding:0.8rem; font-weight:700; cursor:pointer; font-size:0.95rem;">Buy Token Packs</button>
+            </div>
+
+            <!-- Header Info -->
+            <div class="modal-header-premium" id="modal-header-info">
+                <span class="modal-sparkle">✨</span>
+                <h2>Upgrade to Pro</h2>
+                <p>Unlock the full potential of your Creator Studio</p>
+            </div>
+
+            <!-- Features List -->
+            <div class="modal-features-list" id="modal-features-list">
+                <div class="m-feature-item">
+                    <span class="m-feat-check">✓</span>
+                    <div>
+                        <strong>Dynamic QR Codes</strong>
+                        <span>Change destination URLs later without reprinting</span>
+                    </div>
+                </div>
+                <div class="m-feature-item">
+                    <span class="m-feat-check">✓</span>
+                    <div>
+                        <strong>Premium Templates</strong>
+                        <span>Full access to Savage Neon and Art Deco Gold</span>
+                    </div>
+                </div>
+                <div class="m-feature-item">
+                    <span class="m-feat-check">✓</span>
+                    <div>
+                        <strong>Advanced Customization</strong>
+                        <span>Upload brand logo, customize eye shapes &amp; add gradient colors</span>
+                    </div>
+                </div>
+                <div class="m-feature-item">
+                    <span class="m-feat-check">✓</span>
+                    <div>
+                        <strong>Scans Analytics Dashboard</strong>
+                        <span>Monitor your scans, locations, devices &amp; traffic details</span>
+                    </div>
+                </div>
+                <div class="m-feature-item">
+                    <span class="m-feat-check">✓</span>
+                    <div>
+                        <strong>No Watermarks &amp; High-Res</strong>
+                        <span>Ad-free, watermark-free, and high-resolution exports</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subscriptions selection grid -->
+            <div class="modal-pricing-selection" id="subs-pricing-section">
+                <div class="pricing-card active" id="pro-tier-select">
+                    <div class="badge-popular">RECOMMENDED</div>
+                    <h3>Pro Plan</h3>
+                    <div class="price-val">$9.99<span>/mo</span></div>
+                    <p>Includes 50 monthly tokens</p>
+                </div>
+                <div class="pricing-card" id="ent-tier-select">
+                    <h3>Enterprise Plan</h3>
+                    <div class="price-val">$49.99<span>/mo</span></div>
+                    <p>Includes 500 monthly tokens</p>
+                </div>
+            </div>
+
+            <!-- Token packs selection grid -->
+            <div class="modal-pricing-selection" id="token-packs-section" style="display:none; grid-template-columns: 1fr 1fr;">
+                <div class="pricing-card active" id="pack-starter-select">
+                    <h3>Starter Pack</h3>
+                    <div class="price-val">20 Tokens</div>
+                    <p>$4.99 one-time purchase</p>
+                </div>
+                <div class="pricing-card" id="pack-booster-select">
+                    <div class="badge-popular">BEST VALUE</div>
+                    <h3>Booster Pack</h3>
+                    <div class="price-val">100 Tokens</div>
+                    <p>$14.99 one-time purchase</p>
+                </div>
+            </div>
+
+            <!-- Checkout Simulator Button -->
+            <div class="checkout-simulator-form" id="payment-form">
+                <button type="button" class="upgrade-btn-modal" id="submit-upgrade-sim-btn">Complete Upgrade (Simulated)</button>
+            </div>
+        </div>
     </div>
 
     <script src="env.config.example.js"></script>

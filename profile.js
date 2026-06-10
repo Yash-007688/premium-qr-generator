@@ -42,12 +42,30 @@ async function loadProfileData() {
             document.getElementById('profile-email-static').innerText = profile.email || 'N/A';
             document.getElementById('profile-role-static').innerText = profile.role || 'user';
             
+            const tierVal = profile.tier || 'free';
+            const tierEl = document.getElementById('profile-tier-static');
+            if (tierEl) {
+                if (tierVal === 'pro') tierEl.innerHTML = 'Pro ✨';
+                else if (tierVal === 'enterprise') tierEl.innerHTML = 'Enterprise 🏆';
+                else tierEl.innerHTML = 'Free';
+            }
+            
             // Format Joined Date
             const joinDate = new Date(profile.created_at);
             document.getElementById('profile-joined-static').innerText = joinDate.toLocaleDateString([], {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
+            });
+
+            // Listen for global tierchange to dynamically sync profile tier details
+            window.addEventListener('tierchange', (e) => {
+                const newTier = e.detail.tier;
+                if (tierEl) {
+                    if (newTier === 'pro') tierEl.innerHTML = 'Pro ✨';
+                    else if (newTier === 'enterprise') tierEl.innerHTML = 'Enterprise 🏆';
+                    else tierEl.innerHTML = 'Free';
+                }
             });
 
             // Set Avatar image or letter
