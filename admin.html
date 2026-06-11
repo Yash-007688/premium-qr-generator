@@ -70,6 +70,20 @@
                         <span class="stat-label">Link QRs</span>
                     </div>
                 </div>
+                <div class="stat-card" style="border-color: rgba(251,146,60,0.3); background: rgba(251,146,60,0.05);">
+                    <span class="stat-icon">🪙</span>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-tokens" style="color:#fb923c;">0</span>
+                        <span class="stat-label">Tokens Issued</span>
+                    </div>
+                </div>
+                <div class="stat-card" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05);">
+                    <span class="stat-icon">💰</span>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-revenue" style="color:#4ade80;">₹0</span>
+                        <span class="stat-label">Total Revenue</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Sorting & Range Filtering Controls -->
@@ -120,12 +134,37 @@
                             <th>Name</th>
                             <th>Email</th>
                             <th>Role</th>
+                            <th>🪙 Tokens</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="auth-table-body">
-                        <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                        <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 💳 PAYMENTS TABLE -->
+        <div class="table-section">
+            <h3>💳 Payment Transactions</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>Pack</th>
+                            <th>🪙 Tokens</th>
+                            <th>Amount</th>
+                            <th>Gateway</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-table-body">
+                        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -133,7 +172,7 @@
 
         <!-- 📶 WI-FI & HOTSPOT MANAGEMENT TABLE -->
         <div class="table-section">
-            <h3>📶 Wi-Fi & Hotspot QR Codes</h3>
+            <h3>📶 Wi-Fi &amp; Hotspot QR Codes</h3>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -217,6 +256,45 @@
             <div class="modal-actions">
                 <button class="action-btn" style="background-color: transparent; border:1px solid var(--border-color); color:var(--text-main);" id="ban-cancel-btn">Cancel</button>
                 <button class="action-btn" style="background-color: #ef4444;" id="ban-confirm-btn">Confirm Ban</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🪙 TOKEN EDIT MODAL -->
+    <div class="modal-overlay" id="token-modal-overlay">
+        <div class="ban-modal">
+            <h3>🪙 Edit Token Balance</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+                Manually adjust this user's token balance. Use positive value to add, negative to deduct.
+            </p>
+
+            <div class="modal-group">
+                <label>User</label>
+                <div id="token-modal-username" style="font-weight:700; color:var(--text-main); font-size:1rem; padding:0.5rem 0;">—</div>
+            </div>
+
+            <div class="modal-group">
+                <label>Current Balance</label>
+                <div id="token-modal-current" style="font-size:1.5rem; font-weight:900; color:#fb923c;">—</div>
+            </div>
+
+            <div class="modal-group">
+                <label for="token-adjust-amount">Adjust By (+ to add, - to deduct)</label>
+                <input type="number" id="token-adjust-amount" class="form-input"
+                    style="background-color:var(--bg-color); border:1px solid var(--border-color); color:var(--text-main);"
+                    placeholder="e.g. 50 or -10" value="50">
+            </div>
+
+            <div class="modal-group">
+                <label for="token-adjust-note">Note (optional)</label>
+                <input type="text" id="token-adjust-note" class="form-input"
+                    style="background-color:var(--bg-color); border:1px solid var(--border-color); color:var(--text-main);"
+                    placeholder="e.g. Manual top-up by admin">
+            </div>
+
+            <div class="modal-actions">
+                <button class="action-btn" style="background-color:transparent; border:1px solid var(--border-color); color:var(--text-main);" id="token-cancel-btn">Cancel</button>
+                <button class="action-btn" style="background: linear-gradient(135deg,#6366f1,#8b5cf6);" id="token-confirm-btn">Save Changes</button>
             </div>
         </div>
     </div>

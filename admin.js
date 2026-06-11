@@ -6,9 +6,12 @@ let qrTypeChart = null;
 let globalAuthData = [];
 let globalWifiData = [];
 let globalLinkData = [];
+let globalPaymentData = [];
 
-// Keep track of user being banned
+// Keep track of user being banned / token-edited
 let activeBanUserId = null;
+let activeTokenUserId = null;
+let activeTokenCurrentBalance = 0;
 
 // Protect Admin Page (admins only)
 window.addEventListener('DOMContentLoaded', async () => {
@@ -23,6 +26,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('graph-time-range').addEventListener('change', processAndDrawCharts);
     document.getElementById('graph-sort-order').addEventListener('change', processAndDrawCharts);
     window.addEventListener('themechange', processAndDrawCharts);
+
+    // --- Token Modal Wiring ---
+    document.getElementById('token-cancel-btn').addEventListener('click', () => {
+        document.getElementById('token-modal-overlay').classList.remove('show');
+        activeTokenUserId = null;
+    });
+
+    document.getElementById('token-confirm-btn').addEventListener('click', adjustUserTokens);
 
     // Bind Advanced Ban Modal Interactivity
     const modalOverlay = document.getElementById('ban-modal-overlay');
@@ -127,6 +138,7 @@ async function fetchData() {
     document.getElementById('auth-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
     document.getElementById('wifi-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
     document.getElementById('link-table-body').innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
+    document.getElementById('payment-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Loading...</td></tr>';
 
     try {
         // 1. Fetch Profiles (Auth) Data
@@ -156,6 +168,17 @@ async function fetchData() {
         if (linkError) throw linkError;
         globalLinkData = linkData || [];
 
+        // 4. Fetch Payments Data (graceful — table may not exist yet)
+        try {
+            const { data: payData, error: payError } = await supabaseClient
+                .from('payments')
+                .select('*, profiles(full_name, email)')
+                .order('created_at', { ascending: false });
+            if (!payError) globalPaymentData = payData || [];
+        } catch (_) {
+            globalPaymentData = [];
+        }
+
         // Update Overview Cards
         updateMetricCards();
 
@@ -163,6 +186,7 @@ async function fetchData() {
         renderAuthTable(globalAuthData);
         renderWifiTable(globalWifiData);
         renderLinkTable(globalLinkData);
+        renderPaymentTable(globalPaymentData);
 
         // Process and Draw Analytics Charts
         processAndDrawCharts();
@@ -175,6 +199,7 @@ async function fetchData() {
         document.getElementById('auth-table-body').innerHTML = errMsg;
         document.getElementById('wifi-table-body').innerHTML = errMsg;
         document.getElementById('link-table-body').innerHTML = errMsg;
+        document.getElementById('payment-table-body').innerHTML = errMsg;
     }
 }
 
@@ -182,15 +207,24 @@ function updateMetricCards() {
     // Total Users
     document.getElementById('stat-total-users').innerText = globalAuthData.length;
     
-    // Wi-Fi vs Hotspot QRs (both live inside wifi_qrs table)
+    // Wi-Fi vs Hotspot QRs
     const wifiCount = globalWifiData.filter(row => row.connection_type !== 'hotspot').length;
     const hotspotCount = globalWifiData.filter(row => row.connection_type === 'hotspot').length;
-    
     document.getElementById('stat-wifi-qrs').innerText = wifiCount;
     document.getElementById('stat-hotspot-qrs').innerText = hotspotCount;
     
     // Total Link QRs
     document.getElementById('stat-link-qrs').innerText = globalLinkData.length;
+
+    // Total Tokens Issued (sum of all user balances)
+    const totalTokens = globalAuthData.reduce((sum, u) => sum + (u.tokens || 0), 0);
+    document.getElementById('stat-total-tokens').innerText = totalTokens;
+
+    // Total Revenue from successful payments
+    const totalRevenue = globalPaymentData
+        .filter(p => p.status === 'success')
+        .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    document.getElementById('stat-total-revenue').innerText = '\u20b9' + totalRevenue.toFixed(0);
 }
 
 function formatDate(isoString) {
@@ -362,20 +396,24 @@ function renderAuthTable(data) {
         const roleLabel = role === 'admin' ? 'Admin' : 'User';
         const roleColor = role === 'admin' ? '#f97316' : 'var(--text-muted)';
         
-        // Banned state UI styling
         const statusBadge = row.is_banned 
             ? `<span class="badge badge-banned">Banned</span>` 
             : `<span class="badge badge-active">Active</span>`;
 
-        // Ban button text and action
         const banActionText = row.is_banned ? 'Unban' : 'Ban';
         const banActionClass = row.is_banned ? 'mod-btn-success' : 'mod-btn-warning';
 
+        // Token display with edit button
+        const tokenBal = row.tokens ?? 100;
+        const tokenCell = `<span style="color:#fb923c; font-weight:700;">${tokenBal}</span>
+            <button class="mod-btn" style="padding:0.2rem 0.5rem; font-size:0.72rem; margin-left:0.35rem; background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:#a5b4fc;"
+                onclick="editUserTokens('${row.id}', '${(row.full_name || row.email || 'User').replace(/'/g, "\\'")}'  , ${tokenBal})">✏️ Edit</button>`;
+
         tr.innerHTML = `
-            <td>${formatDate(row.created_at)}</td>
             <td><strong>${row.full_name || 'N/A'}</strong></td>
             <td><a href="mailto:${row.email}" style="color:var(--primary); text-decoration:none;">${row.email}</a></td>
             <td><span style="color:${roleColor}; font-weight:600; text-transform:capitalize;">${roleLabel}</span></td>
+            <td>${tokenCell}</td>
             <td>${statusBadge}</td>
             <td>
                 <button class="mod-btn ${banActionClass}" onclick="toggleBanUser('${row.id}', ${row.is_banned})">${banActionText}</button>
@@ -550,3 +588,111 @@ window.deleteLinkQR = async function(qrId) {
         alert(`Error executing delete action: ${e.message}`);
     }
 };
+
+// === PAYMENTS TABLE RENDERER ===
+function renderPaymentTable(data) {
+    const tbody = document.getElementById('payment-table-body');
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No payment transactions found. (Run payments table SQL first)</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        const userName = row.profiles?.full_name || row.profiles?.email || 'Unknown User';
+        const amount = parseFloat(row.amount || 0).toFixed(2);
+
+        // Status badge colour
+        const statusColors = {
+            success:  { bg: 'rgba(34,197,94,0.15)',  color: '#4ade80',  border: 'rgba(34,197,94,0.3)'  },
+            pending:  { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24',  border: 'rgba(251,191,36,0.3)' },
+            failed:   { bg: 'rgba(239,68,68,0.15)',  color: '#f87171',  border: 'rgba(239,68,68,0.3)'  },
+            refunded: { bg: 'rgba(148,163,184,0.15)',color: '#94a3b8',  border: 'rgba(148,163,184,0.3)'}
+        };
+        const sc = statusColors[row.status] || statusColors.pending;
+        const statusBadge = `<span style="padding:0.25rem 0.65rem; border-radius:2rem; font-size:0.72rem; font-weight:700;
+            background:${sc.bg}; color:${sc.color}; border:1px solid ${sc.border}; text-transform:uppercase; letter-spacing:0.5px;">
+            ${row.status || 'pending'}</span>`;
+
+        // Refund action only for successful payments
+        const refundBtn = row.status === 'success'
+            ? `<button class="mod-btn mod-btn-warning" onclick="refundPayment('${row.id}')">Refund</button>`
+            : '';
+
+        tr.innerHTML = `
+            <td>${formatDate(row.created_at)}</td>
+            <td><span style="color:var(--text-muted); font-size:0.85rem;">${userName}</span></td>
+            <td><strong>${row.plan_name || '—'}</strong></td>
+            <td><span style="color:#fb923c; font-weight:700;">🪙 ${row.tokens_purchased || 0}</span></td>
+            <td><span style="color:#4ade80; font-weight:700;">₹${amount}</span></td>
+            <td><span style="color:var(--text-muted); font-size:0.82rem;">${row.payment_gateway || 'razorpay'}</span></td>
+            <td>${statusBadge}</td>
+            <td>${refundBtn || '<span style="color:var(--text-muted); font-size:0.78rem;">—</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Mark payment as refunded
+window.refundPayment = async function(paymentId) {
+    if (!confirm('Mark this payment as REFUNDED? This will update the status but will NOT automatically deduct tokens.')) return;
+    try {
+        const { error } = await supabaseClient
+            .from('payments')
+            .update({ status: 'refunded', updated_at: new Date().toISOString() })
+            .eq('id', paymentId);
+        if (error) throw error;
+        alert('Payment marked as refunded.');
+        fetchData();
+    } catch (e) {
+        alert(`Error: ${e.message}`);
+    }
+};
+
+// === TOKEN EDIT MODAL OPENER ===
+window.editUserTokens = function(userId, userName, currentBalance) {
+    activeTokenUserId = userId;
+    activeTokenCurrentBalance = currentBalance;
+    document.getElementById('token-modal-username').innerText = userName;
+    document.getElementById('token-modal-current').innerText = currentBalance + ' 🪙';
+    document.getElementById('token-adjust-amount').value = 50;
+    document.getElementById('token-adjust-note').value = '';
+    document.getElementById('token-modal-overlay').classList.add('show');
+};
+
+// === TOKEN ADJUST HANDLER ===
+async function adjustUserTokens() {
+    if (!activeTokenUserId) return;
+
+    const adjustBy = parseInt(document.getElementById('token-adjust-amount').value, 10);
+    if (isNaN(adjustBy)) {
+        alert('Please enter a valid number.');
+        return;
+    }
+
+    const newBalance = Math.max(0, activeTokenCurrentBalance + adjustBy);
+    const confirmBtn = document.getElementById('token-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = 'Saving...';
+
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ tokens: newBalance })
+            .eq('id', activeTokenUserId);
+
+        if (error) throw error;
+
+        alert(`✅ Token balance updated!\n${activeTokenCurrentBalance} → ${newBalance} tokens`);
+        document.getElementById('token-modal-overlay').classList.remove('show');
+        activeTokenUserId = null;
+        fetchData();
+    } catch (e) {
+        console.error('Failed to update tokens:', e);
+        alert(`Error: ${e.message}`);
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = 'Save Changes';
+    }
+}

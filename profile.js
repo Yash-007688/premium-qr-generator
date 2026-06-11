@@ -21,6 +21,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 4. Load Saved Posters History
     await loadPostersHistory();
 
+    // 5. Wire up token pack buy buttons
+    document.querySelectorAll('.pack-buy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const pack = btn.dataset.pack;
+            const tokens = btn.dataset.tokens;
+            const price = btn.dataset.price;
+            // Placeholder: show alert — replace with Razorpay integration later
+            alert(`🪙 Token Pack: ${tokens} tokens for ₹${price}\n\nPayment gateway integration coming soon!\nYou selected the "${pack}" pack.`);
+        });
+    });
+
     // Bind Update details form submission
     document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
 });
@@ -96,6 +107,12 @@ async function loadProfileData() {
                     statusEl.innerText = 'Offline';
                 }
             }
+
+            // Token Balance Display
+            const tokenBalEl = document.getElementById('profile-token-balance');
+            const tokenUsedEl = document.getElementById('profile-tokens-used');
+            if (tokenBalEl) tokenBalEl.innerText = profile.tokens ?? 100;
+            if (tokenUsedEl) tokenUsedEl.innerText = profile.total_tokens_used ?? 0;
         }
     } catch (e) {
         console.error("Failed to load user profile:", e);

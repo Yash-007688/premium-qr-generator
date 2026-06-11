@@ -73,7 +73,46 @@
                 </button>
             </form>
         </div>
-        
+
+        <!-- Token Balance Card -->
+        <div class="profile-card token-balance-card">
+            <h3>🪙 Token Balance</h3>
+
+            <div class="token-balance-display">
+                <div class="token-big-number" id="profile-token-balance">—</div>
+                <div class="token-label">Tokens Available</div>
+            </div>
+
+            <div class="token-used-row">
+                <span>Lifetime tokens used:</span>
+                <strong id="profile-tokens-used">—</strong>
+            </div>
+
+            <div class="token-packs-grid">
+                <div class="token-pack-card" id="pack-starter">
+                    <div class="pack-tokens">20 🪙</div>
+                    <div class="pack-name">Starter</div>
+                    <div class="pack-price">₹49</div>
+                    <button class="tier-btn tier-btn-outline pack-buy-btn" data-pack="starter" data-tokens="20" data-price="49">Buy</button>
+                </div>
+                <div class="token-pack-card pack-featured" id="pack-booster">
+                    <div class="pack-badge">BEST VALUE</div>
+                    <div class="pack-tokens">100 🪙</div>
+                    <div class="pack-name">Booster</div>
+                    <div class="pack-price">₹149</div>
+                    <button class="tier-btn tier-btn-primary pack-buy-btn" data-pack="booster" data-tokens="100" data-price="149">Buy</button>
+                </div>
+                <div class="token-pack-card" id="pack-mega">
+                    <div class="pack-tokens">500 🪙</div>
+                    <div class="pack-name">Mega</div>
+                    <div class="pack-price">₹499</div>
+                    <button class="tier-btn tier-btn-outline pack-buy-btn" data-pack="mega" data-tokens="500" data-price="499">Buy</button>
+                </div>
+            </div>
+
+            <p class="token-info-note">🪙 1 Token = 1 premium feature use (template, gradient, logo upload)</p>
+        </div>
+
         <!-- Right Section: Personal Posters History -->
         <div class="profile-card">
             <h3>🎨 My Saved QR Posters</h3>
