@@ -190,40 +190,16 @@ function setupUpgradeModal() {
         selectedTier = 'enterprise';
     });
 
-    submitBtn.addEventListener('click', async () => {
+    submitBtn.addEventListener('click', () => {
         submitBtn.disabled = true;
-        submitBtn.innerText = "Processing checkout simulation...";
+        submitBtn.innerText = "Connecting to Payment Gateway...";
 
-        try {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                const { error } = await supabaseClient
-                    .from('profiles')
-                    .update({ tier: selectedTier })
-                    .eq('id', session.user.id);
-
-                if (error) throw error;
-
-                // Sync Navbar Dropdown Selection Element if visible
-                const navSelect = document.getElementById('navbar-tier-select');
-                if (navSelect) {
-                    navSelect.value = selectedTier;
-                }
-
-                userTier = selectedTier;
-                updateUIForTier();
-                generatePreview();
-
-                modal.classList.remove('show');
-                alert(`Congratulations! You have successfully upgraded to ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}! All premium controls are now unlocked.`);
-            }
-        } catch (err) {
-            console.error("Upgrade error:", err);
-            alert("Upgrade failed: " + err.message);
-        } finally {
+        setTimeout(() => {
+            alert(`💳 Payment Gateway Required!\n\nTo upgrade to the ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}, a payment integration (e.g. Stripe, Razorpay) is required.\n\nGateway integration is currently in development!`);
             submitBtn.disabled = false;
-            submitBtn.innerText = "Complete Upgrade (Simulated)";
-        }
+            submitBtn.innerText = "Proceed to Payment";
+            modal.classList.remove('show');
+        }, 1000);
     });
 
     // Handle analytics upgrade trigger click

@@ -282,22 +282,8 @@ async function injectUnifiedDropdown(containerSelector) {
         dropdownContainer.style.gap = '0.8rem';
 
         const adminItem = isAdmin ? `<a class="dropdown-item" href="admin.html">✨ Admin Panel</a>` : '';
-        const tokenBalance = activeProfile?.tokens ?? 0;
-        const tokenBadgeClass = tokenBalance < 10 ? 'token-badge low-balance' : 'token-badge';
 
         dropdownContainer.innerHTML = `
-            <div class="navbar-tier-selector-container" id="nav-tier-selector-container" title="Current Membership Tier">
-                <span class="tier-icon">🏆</span>
-                <select class="tier-selector-select" id="navbar-tier-select">
-                    <option value="free" ${userTier === 'free' ? 'selected' : ''}>Free</option>
-                    <option value="pro" ${userTier === 'pro' ? 'selected' : ''}>Pro ✨</option>
-                    <option value="enterprise" ${userTier === 'enterprise' ? 'selected' : ''}>Enterprise 🏆</option>
-                </select>
-            </div>
-            <div class="${tokenBadgeClass}" id="navbar-token-badge" title="Your token balance">
-                <span class="token-icon">🪙</span>
-                <span class="token-count">${tokenBalance}</span>
-            </div>
             <button id="nav-theme-toggle" class="nav-theme-toggle-btn" aria-label="Toggle theme">
                 <span class="theme-icon-light">☀️</span>
                 <span class="theme-icon-dark">🌙</span>
@@ -350,27 +336,6 @@ async function injectUnifiedDropdown(containerSelector) {
         const trigger = dropdownContainer.querySelector('#profile-trigger-btn');
         const menu = dropdownContainer.querySelector('#profile-dropdown-menu');
         const themeBtn = dropdownContainer.querySelector('#nav-theme-toggle');
-        const tierSelect = dropdownContainer.querySelector('#navbar-tier-select');
-
-        // Handle Tier Change inside navigation dropdown
-        if (tierSelect) {
-            tierSelect.addEventListener('change', async function() {
-                const newTier = this.value;
-                try {
-                    const { error } = await supabaseClient
-                        .from('profiles')
-                        .update({ tier: newTier })
-                        .eq('id', session.user.id);
-                    if (error) throw error;
-                    
-                    // Dispatch global event for reactive UI updates
-                    window.dispatchEvent(new CustomEvent('tierchange', { detail: { tier: newTier } }));
-                } catch (err) {
-                    console.error("Failed to update tier:", err);
-                    alert("Error updating membership tier: " + err.message);
-                }
-            });
-        }
 
         trigger.addEventListener('click', (e) => {
             e.stopPropagation();
