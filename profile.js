@@ -146,7 +146,7 @@ async function loadProfileData() {
             // Token Balance Display
             const tokenBalEl = document.getElementById('profile-token-balance');
             const tokenUsedEl = document.getElementById('profile-tokens-used');
-            if (tokenBalEl) tokenBalEl.innerText = profile.tokens ?? 100;
+            if (tokenBalEl) tokenBalEl.innerText = profile.tokens ?? 20;
             if (tokenUsedEl) tokenUsedEl.innerText = profile.total_tokens_used ?? 0;
         }
     } catch (e) {

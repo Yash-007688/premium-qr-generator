@@ -404,10 +404,10 @@ function renderAuthTable(data) {
         const banActionClass = row.is_banned ? 'mod-btn-success' : 'mod-btn-warning';
 
         // Token display with edit button
-        const tokenBal = row.tokens ?? 100;
+        const tokenBal = row.tokens ?? 20;
         const tokenCell = `<span style="color:#fb923c; font-weight:700;">${tokenBal}</span>
             <button class="mod-btn" style="padding:0.2rem 0.5rem; font-size:0.72rem; margin-left:0.35rem; background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:#a5b4fc;"
-                onclick="editUserTokens('${row.id}', '${(row.full_name || row.email || 'User').replace(/'/g, "\\'")}'  , ${tokenBal})">✏️ Edit</button>`;
+                onclick="editUserTokens('${row.id}', '${(row.full_name || row.email || 'User').replace(/'/g, "\\'")}', ${tokenBal})">✏️ Edit</button>`;
 
         tr.innerHTML = `
             <td><strong>${row.full_name || 'N/A'}</strong></td>

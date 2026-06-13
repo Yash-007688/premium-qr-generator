@@ -7,7 +7,7 @@
 --    tokens: current available balance (default 100 for new users)
 --    total_tokens_used: lifetime tokens spent (for analytics)
 ALTER TABLE public.profiles
-    ADD COLUMN IF NOT EXISTS tokens INTEGER NOT NULL DEFAULT 100;
+    ADD COLUMN IF NOT EXISTS tokens INTEGER NOT NULL DEFAULT 20;
 
 ALTER TABLE public.profiles
     ADD COLUMN IF NOT EXISTS total_tokens_used INTEGER NOT NULL DEFAULT 0;
