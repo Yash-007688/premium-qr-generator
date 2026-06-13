@@ -171,13 +171,27 @@ function setupUpgradeModal() {
     const proSelect = document.getElementById('pro-tier-select');
     const entSelect = document.getElementById('ent-tier-select');
     const submitBtn = document.getElementById('submit-upgrade-sim-btn');
+    
+    // Tabs & sections
+    const tabSubs = document.getElementById('tab-upgrade-subs');
+    const tabTokens = document.getElementById('tab-buy-tokens');
+    const subsSection = document.getElementById('subs-pricing-section');
+    const tokensSection = document.getElementById('token-packs-section');
+    
+    // Token packs
+    const packStarter = document.getElementById('pack-starter-select');
+    const packBooster = document.getElementById('pack-booster-select');
+    
     let selectedTier = 'pro';
+    let selectedPack = 'starter';
+    let currentModalMode = 'subs'; // 'subs' or 'tokens'
 
     closeBtn.addEventListener('click', () => modal.classList.remove('show'));
     modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.classList.remove('show');
     });
 
+    // Subscriptions tabs behavior
     proSelect.addEventListener('click', () => {
         proSelect.classList.add('active');
         entSelect.classList.remove('active');
@@ -190,12 +204,58 @@ function setupUpgradeModal() {
         selectedTier = 'enterprise';
     });
 
+    // Token packs behavior
+    packStarter.addEventListener('click', () => {
+        packStarter.classList.add('active');
+        packBooster.classList.remove('active');
+        selectedPack = 'starter';
+    });
+
+    packBooster.addEventListener('click', () => {
+        packBooster.classList.add('active');
+        packStarter.classList.remove('active');
+        selectedPack = 'booster';
+    });
+
+    // Tab Switching behaviors
+    tabSubs.addEventListener('click', () => {
+        tabSubs.classList.add('active');
+        tabSubs.style.color = 'var(--text-main)';
+        tabSubs.style.borderBottom = '2px solid var(--primary)';
+        tabTokens.classList.remove('active');
+        tabTokens.style.color = 'var(--text-muted)';
+        tabTokens.style.borderBottom = 'none';
+
+        subsSection.style.display = 'grid';
+        tokensSection.style.display = 'none';
+        currentModalMode = 'subs';
+    });
+
+    tabTokens.addEventListener('click', () => {
+        tabTokens.classList.add('active');
+        tabTokens.style.color = 'var(--text-main)';
+        tabTokens.style.borderBottom = '2px solid var(--primary)';
+        tabSubs.classList.remove('active');
+        tabSubs.style.color = 'var(--text-muted)';
+        tabSubs.style.borderBottom = 'none';
+
+        subsSection.style.display = 'none';
+        tokensSection.style.display = 'grid';
+        currentModalMode = 'tokens';
+    });
+
     submitBtn.addEventListener('click', () => {
         submitBtn.disabled = true;
         submitBtn.innerText = "Connecting to Payment Gateway...";
 
         setTimeout(() => {
-            alert(`💳 Payment Gateway Required!\n\nTo upgrade to the ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}, a payment integration (e.g. Stripe, Razorpay) is required.\n\nGateway integration is currently in development!`);
+            if (currentModalMode === 'subs') {
+                const planName = selectedTier === 'pro' ? 'Pro Plan ✨ ($9.99/mo)' : 'Enterprise Plan 🏆 ($49.99/mo)';
+                alert(`💳 Payment Gateway Required!\n\nTo upgrade to the ${planName}, a payment integration (e.g. Stripe, Razorpay) is required.\n\nGateway integration is currently in development!`);
+            } else {
+                const packName = selectedPack === 'starter' ? 'Starter Pack 🪙 (20 Tokens for $4.99)' : 'Booster Pack 🪙 (100 Tokens for $14.99)';
+                alert(`💳 Payment Gateway Required!\n\nTo purchase the ${packName}, a payment integration (e.g. Stripe, Razorpay) is required.\n\nGateway integration is currently in development!`);
+            }
             submitBtn.disabled = false;
             submitBtn.innerText = "Proceed to Payment";
             modal.classList.remove('show');
@@ -203,7 +263,11 @@ function setupUpgradeModal() {
     });
 
     // Handle analytics upgrade trigger click
-    document.getElementById('analytics-upgrade-trigger').addEventListener('click', () => showUpgradeModal('Analytics Dashboard'));
+    document.getElementById('analytics-upgrade-trigger').addEventListener('click', () => {
+        // Switch to subscription tab when triggered from analytics dashboard lock
+        tabSubs.click();
+        showUpgradeModal('Analytics Dashboard');
+    });
 }
 
 function showUpgradeModal(featureName = '') {
