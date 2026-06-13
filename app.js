@@ -744,11 +744,41 @@ document.getElementById('generate-btn').addEventListener('click', generatePrevie
 
 // Download Button Event
 document.getElementById('download-btn').addEventListener('click', async () => {
-    // 1. Fetch current profile limits
+    const btn = document.getElementById('download-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "Processing tokens...";
+    btn.disabled = true;
+
+    // 1. Fetch current profile limits and check tokens
+    let session = null;
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        session = sessionData?.session;
         if (session) {
-            // Query current count of saved posters
+            // Token check for free tier: requires 2 tokens per generate/download
+            if (userTier === 'free') {
+                const balanceInfo = await getTokenBalance(session.user.id);
+                const currentBalance = balanceInfo.tokens;
+                if (currentBalance < 2) {
+                    alert(`Insufficient tokens!\n\nYou need 2 tokens to generate a QR poster on the Free tier. Your current balance is ${currentBalance} tokens.`);
+                    showUpgradeModal('QR Code Download');
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Deduct 2 tokens
+                const deductResult = await deductTokens(session.user.id, 2);
+                if (!deductResult.success) {
+                    alert(`Token deduction failed: ${deductResult.error}`);
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+                alert(`✅ 2 Tokens deducted successfully! Remaining balance: ${deductResult.newBalance}`);
+            }
+
+            // Query current count of saved posters (limit check)
             const { count: wifiCount } = await supabaseClient
                 .from('wifi_qrs')
                 .select('*', { count: 'exact', head: true })
@@ -764,11 +794,13 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             if (userTier === 'free' && totalSaved >= 3) {
                 alert("You have reached the limit of 3 saved QR codes for the Free tier. Please upgrade to Pro for increased limits!");
                 showUpgradeModal('Saved QR Codes Limits');
+                btn.innerText = originalText;
+                btn.disabled = false;
                 return;
             }
         }
     } catch (err) {
-        console.error("Error enforcing limits:", err);
+        console.error("Error checking token limits:", err);
     }
 
     const canvas = document.getElementById('poster-canvas');
@@ -779,10 +811,7 @@ document.getElementById('download-btn').addEventListener('click', async () => {
     const connectionType = activeTab === 'wifi' ? currentWtype : null;
     if (activeTab === 'wifi') name = document.getElementById('ssid').value;
     
-    const btn = document.getElementById('download-btn');
-    const originalText = btn.innerText;
     btn.innerText = "Saving & Downloading...";
-    btn.disabled = true;
     
     // Save to Supabase Database
     try {
@@ -795,6 +824,8 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             await ensureUserProfile(session);
 
             // Step 2: Insert new QR record (each download = new row)
+            const tokensSpent = userTier === 'free' ? 2 : 0;
+
             let dbError = null;
             if (activeTab === 'wifi') {
                 const { error } = await supabaseClient.from('wifi_qrs').insert({
@@ -802,7 +833,8 @@ document.getElementById('download-btn').addEventListener('click', async () => {
                     ssid: name,
                     connection_type: connectionType,
                     template_name: currentTemplate,
-                    qr_image_data: imageData
+                    qr_image_data: imageData,
+                    tokens_spent: tokensSpent
                 });
                 dbError = error;
             } else {
@@ -810,7 +842,8 @@ document.getElementById('download-btn').addEventListener('click', async () => {
                     user_id: userId,
                     url: document.getElementById('url').value,
                     template_name: currentTemplate,
-                    qr_image_data: imageData
+                    qr_image_data: imageData,
+                    tokens_spent: tokensSpent
                 });
                 dbError = error;
             }
