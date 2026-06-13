@@ -146,8 +146,10 @@ async function loadProfileData() {
             // Token Balance Display
             const tokenBalEl = document.getElementById('profile-token-balance');
             const tokenUsedEl = document.getElementById('profile-tokens-used');
-            if (tokenBalEl) tokenBalEl.innerText = profile.tokens ?? 20;
-            if (tokenUsedEl) tokenUsedEl.innerText = profile.total_tokens_used ?? 0;
+            
+            const tokenBalanceInfo = await getTokenBalance(currentUserId);
+            if (tokenBalEl) tokenBalEl.innerText = tokenBalanceInfo.tokens;
+            if (tokenUsedEl) tokenUsedEl.innerText = tokenBalanceInfo.total_tokens_used;
         }
     } catch (e) {
         console.error("Failed to load user profile:", e);

@@ -175,12 +175,12 @@ async function requireAdmin() {
 async function getTokenBalance(userId) {
     try {
         const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('tokens, total_tokens_used')
-            .eq('id', userId)
+            .from('user_tokens')
+            .select('balance, total_spent')
+            .eq('user_id', userId)
             .maybeSingle();
         if (error || !data) return { tokens: 0, total_tokens_used: 0 };
-        return { tokens: data.tokens ?? 0, total_tokens_used: data.total_tokens_used ?? 0 };
+        return { tokens: data.balance ?? 0, total_tokens_used: data.total_spent ?? 0 };
     } catch (e) {
         console.error('Failed to fetch token balance:', e);
         return { tokens: 0, total_tokens_used: 0 };
@@ -194,16 +194,16 @@ async function deductTokens(userId, amount) {
             return { success: false, newBalance: currentBalance, error: 'Insufficient tokens' };
         }
         const newBalance = currentBalance - amount;
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('total_tokens_used')
-            .eq('id', userId)
+        const { data: userTokenRow } = await supabaseClient
+            .from('user_tokens')
+            .select('total_spent')
+            .eq('user_id', userId)
             .maybeSingle();
-        const currentUsed = profile?.total_tokens_used ?? 0;
+        const currentUsed = userTokenRow?.total_spent ?? 0;
         const { error } = await supabaseClient
-            .from('profiles')
-            .update({ tokens: newBalance, total_tokens_used: currentUsed + amount })
-            .eq('id', userId);
+            .from('user_tokens')
+            .update({ balance: newBalance, total_spent: currentUsed + amount })
+            .eq('user_id', userId);
         if (error) return { success: false, newBalance: currentBalance, error: error.message };
         return { success: true, newBalance, error: null };
     } catch (e) {
@@ -217,9 +217,9 @@ async function addTokens(userId, amount) {
         const { tokens: currentBalance } = await getTokenBalance(userId);
         const newBalance = currentBalance + amount;
         const { error } = await supabaseClient
-            .from('profiles')
-            .update({ tokens: newBalance })
-            .eq('id', userId);
+            .from('user_tokens')
+            .update({ balance: newBalance })
+            .eq('user_id', userId);
         if (error) return { success: false, error: error.message };
         return { success: true, newBalance, error: null };
     } catch (e) {
@@ -255,7 +255,7 @@ async function injectUnifiedDropdown(containerSelector) {
 
         const { data: profile, error } = await supabaseClient
             .from('profiles')
-            .select('id, full_name, role, is_banned, ban_reason, ban_type, banned_until, tokens, total_tokens_used, tier')
+            .select('id, full_name, role, is_banned, ban_reason, ban_type, banned_until, tier')
             .eq('id', session.user.id)
             .maybeSingle();
 

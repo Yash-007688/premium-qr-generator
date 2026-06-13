@@ -148,7 +148,25 @@ async function fetchData() {
             .order('created_at', { ascending: false });
 
         if (authError) throw authError;
-        globalAuthData = authData || [];
+
+        // Fetch User Tokens separately
+        const { data: tokenData, error: tokenError } = await supabaseClient
+            .from('user_tokens')
+            .select('*');
+
+        // Merge tokens into authData
+        const tokenMap = {};
+        if (tokenData) {
+            tokenData.forEach(t => {
+                tokenMap[t.user_id] = t;
+            });
+        }
+
+        globalAuthData = (authData || []).map(u => ({
+            ...u,
+            tokens: tokenMap[u.id]?.balance ?? 20,
+            total_tokens_used: tokenMap[u.id]?.total_spent ?? 0
+        }));
 
         // 2. Fetch Wi-Fi & Hotspot Data
         const { data: wifiData, error: wifiError } = await supabaseClient
@@ -678,9 +696,9 @@ async function adjustUserTokens() {
 
     try {
         const { error } = await supabaseClient
-            .from('profiles')
-            .update({ tokens: newBalance })
-            .eq('id', activeTokenUserId);
+            .from('user_tokens')
+            .update({ balance: newBalance })
+            .eq('user_id', activeTokenUserId);
 
         if (error) throw error;
 
