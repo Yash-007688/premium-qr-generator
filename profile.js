@@ -21,14 +21,49 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 4. Load Saved Posters History
     await loadPostersHistory();
 
-    // 5. Wire up token pack buy buttons
+    // 5. Wire up token pack buy buttons with Razorpay Checkout
     document.querySelectorAll('.pack-buy-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const pack = btn.dataset.pack;
-            const tokens = btn.dataset.tokens;
-            const price = btn.dataset.price;
-            // Placeholder: show alert — replace with Razorpay integration later
-            alert(`🪙 Token Pack: ${tokens} tokens for ₹${price}\n\nPayment gateway integration coming soon!\nYou selected the "${pack}" pack.`);
+            const tokens = parseInt(btn.dataset.tokens, 10);
+            const price = parseInt(btn.dataset.price, 10);
+
+            const options = {
+                key: "rzp_test_yourkeyhere", // Replace with your live / test key from Razorpay Dashboard
+                amount: price * 100, // Amount in paise
+                currency: "INR",
+                name: "QR Web Generator",
+                description: `Purchase ${tokens} Tokens - ${pack.toUpperCase()}`,
+                image: "logo.png",
+                handler: async function (response) {
+                    alert(`✅ Payment Successful!\nPayment ID: ${response.razorpay_payment_id}\nUpdating your token balance...`);
+                    try {
+                        const { tokens: currentBalance } = await getTokenBalance(currentUserId);
+                        const newBalance = currentBalance + tokens;
+                        const { error } = await supabaseClient
+                            .from('profiles')
+                            .update({ tokens: newBalance })
+                            .eq('id', currentUserId);
+                        if (error) throw error;
+                        
+                        alert(`Successfully added ${tokens} tokens! Your new balance is ${newBalance}.`);
+                        await loadProfileData();
+                        await injectUnifiedDropdown('.dashboard-nav');
+                    } catch (e) {
+                        alert("Error updating tokens: " + e.message);
+                    }
+                },
+                prefill: {
+                    name: currentProfileName,
+                    email: document.getElementById('profile-email-static').innerText
+                },
+                theme: {
+                    color: "#6366f1"
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
         });
     });
 

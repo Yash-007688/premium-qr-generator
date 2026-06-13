@@ -244,22 +244,87 @@ function setupUpgradeModal() {
         currentModalMode = 'tokens';
     });
 
-    submitBtn.addEventListener('click', () => {
+    submitBtn.addEventListener('click', async () => {
         submitBtn.disabled = true;
         submitBtn.innerText = "Connecting to Payment Gateway...";
 
-        setTimeout(() => {
-            if (currentModalMode === 'subs') {
-                const planName = selectedTier === 'pro' ? 'Pro Plan ✨ ($9.99/mo)' : 'Enterprise Plan 🏆 ($49.99/mo)';
-                alert(`💳 Payment Gateway Required!\n\nTo upgrade to the ${planName}, a payment integration (e.g. Stripe, Razorpay) is required.\n\nGateway integration is currently in development!`);
-            } else {
-                const packName = selectedPack === 'starter' ? 'Starter Pack 🪙 (20 Tokens for $4.99)' : 'Booster Pack 🪙 (100 Tokens for $14.99)';
-                alert(`💳 Payment Gateway Required!\n\nTo purchase the ${packName}, a payment integration (e.g. Stripe, Razorpay) is required.\n\nGateway integration is currently in development!`);
+        // Set amount based on current choice
+        let amount = 0;
+        let description = "";
+        
+        if (currentModalMode === 'subs') {
+            amount = selectedTier === 'pro' ? 799 : 3999; // Amount in INR
+            description = `Upgrade to ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}`;
+        } else {
+            amount = selectedPack === 'starter' ? 49 : 149; // Amount in INR
+            description = `Purchase ${selectedPack === 'starter' ? '20' : '100'} Tokens Pack`;
+        }
+
+        const options = {
+            key: "rzp_test_yourkeyhere", // Replace with your live / test key from Razorpay Dashboard
+            amount: amount * 100, // Amount in paise
+            currency: "INR",
+            name: "QR Web Generator",
+            description: description,
+            image: "logo.png",
+            handler: async function (response) {
+                alert(`✅ Payment Successful!\nPayment ID: ${response.razorpay_payment_id}\nProvisioning your account...`);
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session) {
+                        if (currentModalMode === 'subs') {
+                            const { error } = await supabaseClient
+                                .from('profiles')
+                                .update({ tier: selectedTier })
+                                .eq('id', session.user.id);
+                            if (error) throw error;
+                            
+                            userTier = selectedTier;
+                            updateUIForTier();
+                            generatePreview();
+                            alert(`Congratulations! You have successfully upgraded to ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}!`);
+                        } else {
+                            // Credit tokens
+                            const tokensToAdd = selectedPack === 'starter' ? 20 : 100;
+                            const { data: profile } = await supabaseClient
+                                .from('profiles')
+                                .select('tokens')
+                                .eq('id', session.user.id)
+                                .maybeSingle();
+                            
+                            const newBalance = (profile?.tokens ?? 0) + tokensToAdd;
+                            const { error } = await supabaseClient
+                                .from('profiles')
+                                .update({ tokens: newBalance })
+                                .eq('id', session.user.id);
+                            if (error) throw error;
+
+                            alert(`Successfully added ${tokensToAdd} tokens!`);
+                        }
+                        await injectUnifiedDropdown('.dashboard-nav');
+                    }
+                } catch (err) {
+                    console.error("Database update error:", err);
+                    alert("Error updating database record: " + err.message);
+                } finally {
+                    modal.classList.remove('show');
+                }
+            },
+            theme: {
+                color: "#6366f1"
             }
+        };
+
+        try {
+            const rzp = new Razorpay(options);
+            rzp.open();
+        } catch (e) {
+            console.error("Razorpay loading error:", e);
+            alert("Razorpay checkout failed to load. Please verify script availability.");
+        } finally {
             submitBtn.disabled = false;
             submitBtn.innerText = "Proceed to Payment";
-            modal.classList.remove('show');
-        }, 1000);
+        }
     });
 
     // Handle analytics upgrade trigger click
