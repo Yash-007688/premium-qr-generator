@@ -1010,131 +1010,160 @@ function drawArtDeco(ctx, w, h) {
 // Generate Button Event
 document.getElementById('generate-btn').addEventListener('click', generatePreview);
 
+function downloadPosterFile(imageData, filename) {
+    const link = document.createElement('a');
+    link.href = imageData;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function waitForPosterCanvas() {
+    return new Promise((resolve, reject) => {
+        generatePreview();
+        setTimeout(() => {
+            const rawCanvas = document.querySelector('#qr-code-raw canvas');
+            if (!rawCanvas) {
+                reject(new Error('QR code not ready. Click "Generate Preview" and try again.'));
+                return;
+            }
+            drawPoster();
+            const canvas = document.getElementById('poster-canvas');
+            if (!canvas) {
+                reject(new Error('Poster canvas not found.'));
+                return;
+            }
+            resolve(canvas);
+        }, 120);
+    });
+}
+
+async function getSavedPosterCount(userId) {
+    const { count: wifiCount, error: wifiError } = await supabaseClient
+        .from('wifi_qrs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+    const { count: linkCount, error: linkError } = await supabaseClient
+        .from('link_qrs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+    if (wifiError) throw wifiError;
+    if (linkError) throw linkError;
+    return (wifiCount || 0) + (linkCount || 0);
+}
+
 // Download Button Event
 document.getElementById('download-btn').addEventListener('click', async () => {
     const btn = document.getElementById('download-btn');
     const originalText = btn.innerText;
-    btn.innerText = "Processing tokens...";
+    btn.innerText = 'Preparing download...';
     btn.disabled = true;
 
-    // 1. Fetch current profile limits and check tokens
-    let session = null;
     try {
-        const { data: sessionData } = await supabaseClient.auth.getSession();
-        session = sessionData?.session;
-        if (session) {
-            // Token check for free tier: requires 2 tokens per generate/download
-            if (userTier === 'free') {
-                const balanceInfo = await getTokenBalance(session.user.id);
-                const currentBalance = balanceInfo.tokens;
-                if (currentBalance < 2) {
-                    alert(`Insufficient tokens!\n\nYou need 2 tokens to generate a QR poster on the Free tier. Your current balance is ${currentBalance} tokens.`);
-                    showUpgradeModal('QR Code Download');
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    return;
-                }
-
-                // Deduct 2 tokens
-                const deductResult = await deductTokens(session.user.id, 2);
-                if (!deductResult.success) {
-                    alert(`Token deduction failed: ${deductResult.error}`);
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    return;
-                }
-                alert(`✅ 2 Tokens deducted successfully! Remaining balance: ${deductResult.newBalance}`);
-            }
-
-            // Query current count of saved posters (limit check)
-            const { count: wifiCount } = await supabaseClient
-                .from('wifi_qrs')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', session.user.id);
-            const { count: linkCount } = await supabaseClient
-                .from('link_qrs')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', session.user.id);
-
-            const totalSaved = (wifiCount || 0) + (linkCount || 0);
-
-            // Limit Enforcement: Free users are maxed at 3 saves/downloads
-            if (userTier === 'free' && totalSaved >= 3) {
-                alert("You have reached the limit of 3 saved QR codes for the Free tier. Please upgrade to Pro for increased limits!");
-                showUpgradeModal('Saved QR Codes Limits');
-                btn.innerText = originalText;
-                btn.disabled = false;
-                return;
-            }
+        const activeTab = document.querySelector('.tab-btn.active')?.getAttribute('data-tab');
+        if (activeTab === 'analytics') {
+            alert('Switch to the Wi-Fi or URL tab to download your QR poster.');
+            return;
         }
-    } catch (err) {
-        console.error("Error checking token limits:", err);
-    }
 
-    const canvas = document.getElementById('poster-canvas');
-    const imageData = canvas.toDataURL('image/png');
-    
-    const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
-    let name = 'Link';
-    const connectionType = activeTab === 'wifi' ? currentWtype : null;
-    if (activeTab === 'wifi') name = document.getElementById('ssid').value;
-    
-    btn.innerText = "Saving & Downloading...";
-    
-    // Save to Supabase Database
-    try {
         const { data: sessionData } = await supabaseClient.auth.getSession();
         const session = sessionData?.session;
-        const userId = session?.user?.id;
-        
-        if (userId) {
-            // Step 1: Upsert profile so FK never fails
-            await ensureUserProfile(session);
+        if (!session) {
+            alert('Please log in again to download your poster.');
+            window.location.replace('login.html');
+            return;
+        }
 
-            // Step 2: Insert new QR record (each download = new row)
+        if (userTier === 'free') {
+            btn.innerText = 'Checking limits...';
+            const totalSaved = await getSavedPosterCount(session.user.id);
+            if (totalSaved >= 3) {
+                alert('You have reached the limit of 3 saved QR codes for the Free tier. Please upgrade to Pro for increased limits!');
+                showUpgradeModal('Saved QR Codes Limits');
+                return;
+            }
+
+            const balanceInfo = await getTokenBalance(session.user.id);
+            if (balanceInfo.tokens < 2) {
+                alert(`Insufficient tokens!\n\nYou need 2 tokens to download a QR poster on the Free tier. Your current balance is ${balanceInfo.tokens} tokens.`);
+                showUpgradeModal('QR Code Download');
+                return;
+            }
+
+            btn.innerText = 'Processing tokens...';
+            const deductResult = await deductTokens(session.user.id, 2);
+            if (!deductResult.success) {
+                alert(`Token deduction failed: ${deductResult.error}`);
+                return;
+            }
+            if (typeof injectUnifiedDropdown === 'function') {
+                await injectUnifiedDropdown('.dashboard-nav');
+            }
+        }
+
+        btn.innerText = 'Rendering poster...';
+        const canvas = await waitForPosterCanvas();
+        let imageData;
+        try {
+            imageData = canvas.toDataURL('image/png');
+        } catch (canvasErr) {
+            console.error('Canvas export failed:', canvasErr);
+            alert('Could not export the poster image. If you uploaded a logo, try removing it and generate again.');
+            return;
+        }
+
+        let name = 'Link';
+        const connectionType = activeTab === 'wifi' ? currentWtype : null;
+        if (activeTab === 'wifi') {
+            name = (document.getElementById('ssid').value || 'WiFi').trim() || 'WiFi';
+        }
+
+        btn.innerText = 'Saving & Downloading...';
+
+        try {
+            await ensureUserProfile(session);
             const tokensSpent = userTier === 'free' ? 2 : 0;
 
-            let dbError = null;
             if (activeTab === 'wifi') {
                 const { error } = await supabaseClient.from('wifi_qrs').insert({
-                    user_id: userId,
+                    user_id: session.user.id,
                     ssid: name,
-                    connection_type: connectionType,
+                    connection_type: connectionType || 'wifi',
                     template_name: currentTemplate,
                     qr_image_data: imageData,
                     tokens_spent: tokensSpent
                 });
-                dbError = error;
+                if (error) console.error('DB Insert Error:', error.message);
             } else {
                 const { error } = await supabaseClient.from('link_qrs').insert({
-                    user_id: userId,
+                    user_id: session.user.id,
                     url: document.getElementById('url').value,
                     template_name: currentTemplate,
                     qr_image_data: imageData,
                     tokens_spent: tokensSpent
                 });
-                dbError = error;
+                if (error) console.error('DB Insert Error:', error.message);
             }
-
-            if (dbError) {
-                console.error("DB Insert Error:", dbError.message);
-            }
+        } catch (e) {
+            console.error('Error saving to database:', e);
         }
-    } catch (e) {
-        console.error("Error saving to database:", e);
+
+        const typeSuffix = connectionType === 'hotspot' ? 'Hotspot' : connectionType === 'wifi' ? 'WiFi' : '';
+        const safeName = name.replace(/[<>:"/\\|?*]+/g, '_').slice(0, 40);
+        const filename = typeSuffix
+            ? `${safeName}_${currentTemplate}_${typeSuffix}_QR.png`
+            : `${safeName}_${currentTemplate}_QR.png`;
+
+        downloadPosterFile(imageData, filename);
+    } catch (err) {
+        console.error('Download failed:', err);
+        alert(err.message || 'Download failed. Please try again.');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
     }
-    
-    // Always download the file
-    const link = document.createElement('a');
-    const typeSuffix = connectionType === 'hotspot' ? 'Hotspot' : connectionType === 'wifi' ? 'WiFi' : '';
-    link.download = typeSuffix
-        ? `${name}_${currentTemplate}_${typeSuffix}_QR.png`
-        : `${name}_${currentTemplate}_QR.png`;
-    link.href = imageData;
-    link.click();
-    
-    btn.innerText = originalText;
-    btn.disabled = false;
 });
 
 // Initial generation
