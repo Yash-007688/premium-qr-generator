@@ -87,7 +87,70 @@
                 <div id="url-form" class="form-section">
                     <div class="input-group">
                         <label for="url">Website URL</label>
-                        <input type="url" id="url" class="form-input" placeholder="https://example.com" value="https://google.com">
+                        <input type="url" id="url" class="form-input" placeholder="https://example.com or paste a YouTube link" value="https://google.com">
+                    </div>
+
+                    <!-- YouTube Timestamp System (auto-shown when YouTube URL detected) -->
+                    <div id="yt-timestamp-panel" class="yt-timestamp-panel" style="display:none;">
+                        <div class="yt-panel-header">
+                            <div class="yt-panel-title">
+                                <svg class="yt-icon" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                <span>YouTube Timestamp QR</span>
+                            </div>
+                            <span class="yt-panel-badge">Auto-detected</span>
+                        </div>
+
+                        <!-- Video Preview Strip -->
+                        <div class="yt-video-preview" id="yt-video-preview">
+                            <div class="yt-thumb-wrapper" id="yt-thumb-wrapper">
+                                <img id="yt-thumbnail" src="" alt="YouTube thumbnail" class="yt-thumbnail">
+                                <div class="yt-play-icon">▶</div>
+                            </div>
+                            <div class="yt-video-meta">
+                                <div class="yt-video-id-label">Video ID: <span id="yt-video-id-display">—</span></div>
+                                <div class="yt-url-clean" id="yt-url-clean">—</div>
+                            </div>
+                        </div>
+
+                        <!-- Timestamp Builder -->
+                        <div class="yt-ts-builder">
+                            <div class="yt-ts-builder-header">
+                                <span>⏱ Add Timestamp</span>
+                            </div>
+                            <div class="yt-ts-input-row">
+                                <div class="yt-ts-time-fields">
+                                    <input type="number" id="ts-hours" class="ts-time-input" placeholder="HH" min="0" max="23" value="0">
+                                    <span class="ts-sep">:</span>
+                                    <input type="number" id="ts-minutes" class="ts-time-input" placeholder="MM" min="0" max="59" value="0">
+                                    <span class="ts-sep">:</span>
+                                    <input type="number" id="ts-seconds" class="ts-time-input" placeholder="SS" min="0" max="59" value="0">
+                                </div>
+                                <input type="text" id="ts-label" class="form-input ts-label-input" placeholder="Label (e.g. Intro)">
+                                <button id="ts-add-btn" class="ts-add-btn" title="Add Timestamp">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Timestamp List -->
+                        <div class="yt-ts-list-wrapper" id="yt-ts-list-wrapper" style="display:none;">
+                            <div class="yt-ts-list-header">
+                                <span>📋 Timestamps</span>
+                                <button id="ts-clear-all-btn" class="ts-clear-btn">Clear All</button>
+                            </div>
+                            <ul class="yt-ts-list" id="yt-ts-list"></ul>
+                        </div>
+
+                        <!-- Active Timestamp QR Info -->
+                        <div class="yt-ts-active-info" id="yt-ts-active-info" style="display:none;">
+                            <div class="yt-ts-active-label">
+                                <span class="yt-ts-active-dot"></span>
+                                QR points to: <strong id="yt-ts-active-time">0:00</strong>
+                                <span id="yt-ts-active-name"></span>
+                            </div>
+                            <button id="yt-ts-reset-btn" class="ts-reset-btn">Reset to start</button>
+                        </div>
                     </div>
                     
                     <!-- Dynamic vs Static Toggle -->

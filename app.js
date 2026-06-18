@@ -486,6 +486,265 @@ document.getElementById('enable-gradient').addEventListener('change', function()
     generatePreview();
 });
 
+// ============================================================
+//  YOUTUBE TIMESTAMP SYSTEM
+// ============================================================
+
+const ytTimestampState = {
+    videoId: null,
+    baseUrl: null,
+    timestamps: [],        // [{ id, seconds, label }]
+    activeTimestampId: null
+};
+
+/** Extract YouTube video ID from any YouTube URL format */
+function extractYouTubeVideoId(url) {
+    try {
+        const u = new URL(url);
+        const host = u.hostname.replace('www.', '');
+        if (host === 'youtube.com' || host === 'm.youtube.com') {
+            if (u.pathname === '/watch') return u.searchParams.get('v');
+            const shortMatch = u.pathname.match(/^\/(?:embed|v|shorts)\/([a-zA-Z0-9_-]{11})/);
+            if (shortMatch) return shortMatch[1];
+        }
+        if (host === 'youtu.be') {
+            return u.pathname.slice(1).split('?')[0];
+        }
+    } catch (_) {}
+    return null;
+}
+
+/** Check if a string looks like a YouTube URL */
+function isYouTubeUrl(url) {
+    return /(?:youtube\.com|youtu\.be)/i.test(url);
+}
+
+/** Format total seconds → H:MM:SS or M:SS */
+function formatSeconds(secs) {
+    const s = Math.max(0, Math.floor(secs));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) {
+        return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+    return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+/** Build a YouTube URL with the given start time in seconds */
+function buildYouTubeTimestampUrl(videoId, seconds) {
+    const t = Math.max(0, Math.floor(seconds));
+    return `https://www.youtube.com/watch?v=${videoId}&t=${t}s`;
+}
+
+/** Show / update the YouTube panel */
+function showYouTubePanel(videoId, rawUrl) {
+    ytTimestampState.videoId = videoId;
+    ytTimestampState.baseUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+    const panel = document.getElementById('yt-timestamp-panel');
+    panel.style.display = 'block';
+    // Re-trigger animation
+    panel.style.animation = 'none';
+    panel.offsetHeight; // reflow
+    panel.style.animation = '';
+
+    // Thumbnail
+    const thumb = document.getElementById('yt-thumbnail');
+    thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+    thumb.onerror = () => { thumb.src = ''; };
+
+    // Meta text
+    document.getElementById('yt-video-id-display').textContent = videoId;
+    document.getElementById('yt-url-clean').textContent = `youtube.com/watch?v=${videoId}`;
+
+    renderTimestampList();
+    updateActiveInfo();
+}
+
+/** Hide the YouTube panel and reset state */
+function hideYouTubePanel() {
+    document.getElementById('yt-timestamp-panel').style.display = 'none';
+    ytTimestampState.videoId = null;
+    ytTimestampState.baseUrl = null;
+    ytTimestampState.activeTimestampId = null;
+    // Do NOT clear timestamps — keep them for convenience
+    updateActiveInfo();
+}
+
+/** Render all timestamp list items */
+function renderTimestampList() {
+    const list = document.getElementById('yt-ts-list');
+    const wrapper = document.getElementById('yt-ts-list-wrapper');
+    const tss = ytTimestampState.timestamps;
+
+    if (tss.length === 0) {
+        wrapper.style.display = 'none';
+        return;
+    }
+    wrapper.style.display = 'block';
+
+    list.innerHTML = '';
+    tss.forEach(ts => {
+        const li = document.createElement('li');
+        li.className = 'yt-ts-item' + (ts.id === ytTimestampState.activeTimestampId ? ' active-ts' : '');
+        li.dataset.id = ts.id;
+
+        li.innerHTML = `
+            <span class="ts-item-time">${formatSeconds(ts.seconds)}</span>
+            <span class="ts-item-label ${ts.label ? '' : 'no-label'}">${ts.label || 'No label'}</span>
+            <span class="ts-item-select-badge">Active</span>
+            <button class="ts-item-delete" title="Remove" data-id="${ts.id}">✕</button>
+        `;
+
+        // Click row → set as active QR target
+        li.addEventListener('click', (e) => {
+            if (e.target.classList.contains('ts-item-delete')) return;
+            setActiveTimestamp(ts.id);
+        });
+
+        // Delete button
+        li.querySelector('.ts-item-delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteTimestamp(ts.id);
+        });
+
+        list.appendChild(li);
+    });
+}
+
+/** Set a timestamp as the active QR target */
+function setActiveTimestamp(id) {
+    ytTimestampState.activeTimestampId = id;
+    renderTimestampList();
+    updateActiveInfo();
+    generatePreview();
+}
+
+/** Remove a timestamp entry */
+function deleteTimestamp(id) {
+    ytTimestampState.timestamps = ytTimestampState.timestamps.filter(t => t.id !== id);
+    if (ytTimestampState.activeTimestampId === id) {
+        ytTimestampState.activeTimestampId = null;
+    }
+    renderTimestampList();
+    updateActiveInfo();
+    generatePreview();
+}
+
+/** Update the active-QR info bar at the bottom of the panel */
+function updateActiveInfo() {
+    const infoBar = document.getElementById('yt-ts-active-info');
+    const activeTs = ytTimestampState.timestamps.find(t => t.id === ytTimestampState.activeTimestampId);
+
+    if (activeTs) {
+        infoBar.style.display = 'flex';
+        document.getElementById('yt-ts-active-time').textContent = formatSeconds(activeTs.seconds);
+        const nameEl = document.getElementById('yt-ts-active-name');
+        nameEl.textContent = activeTs.label ? `"${activeTs.label}"` : '';
+    } else {
+        infoBar.style.display = 'none';
+    }
+}
+
+/** Add a new timestamp from the input fields */
+function addTimestampFromInputs() {
+    const h = parseInt(document.getElementById('ts-hours').value) || 0;
+    const m = parseInt(document.getElementById('ts-minutes').value) || 0;
+    const s = parseInt(document.getElementById('ts-seconds').value) || 0;
+    const label = document.getElementById('ts-label').value.trim();
+
+    const totalSeconds = h * 3600 + m * 60 + s;
+
+    const newTs = {
+        id: Date.now().toString(),
+        seconds: totalSeconds,
+        label: label
+    };
+
+    ytTimestampState.timestamps.push(newTs);
+    // Sort by time ascending
+    ytTimestampState.timestamps.sort((a, b) => a.seconds - b.seconds);
+
+    // Auto-select if first timestamp
+    if (ytTimestampState.timestamps.length === 1) {
+        ytTimestampState.activeTimestampId = newTs.id;
+    }
+
+    // Reset inputs
+    document.getElementById('ts-hours').value = 0;
+    document.getElementById('ts-minutes').value = 0;
+    document.getElementById('ts-seconds').value = 0;
+    document.getElementById('ts-label').value = '';
+
+    renderTimestampList();
+    updateActiveInfo();
+    generatePreview();
+
+    // Flash the add button
+    const btn = document.getElementById('ts-add-btn');
+    btn.style.background = 'linear-gradient(135deg, #4ade80, #22c55e)';
+    setTimeout(() => { btn.style.background = ''; }, 600);
+}
+
+// Wire up timestamp UI events (deferred until DOM ready)
+document.addEventListener('DOMContentLoaded', () => {
+    // Add button
+    document.getElementById('ts-add-btn').addEventListener('click', addTimestampFromInputs);
+
+    // Enter key on label input
+    document.getElementById('ts-label').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTimestampFromInputs();
+    });
+
+    // Enter key on time inputs
+    ['ts-hours', 'ts-minutes', 'ts-seconds'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addTimestampFromInputs();
+        });
+    });
+
+    // Clear all
+    document.getElementById('ts-clear-all-btn').addEventListener('click', () => {
+        ytTimestampState.timestamps = [];
+        ytTimestampState.activeTimestampId = null;
+        renderTimestampList();
+        updateActiveInfo();
+        generatePreview();
+    });
+
+    // Reset to start (deselect active timestamp)
+    document.getElementById('yt-ts-reset-btn').addEventListener('click', () => {
+        ytTimestampState.activeTimestampId = null;
+        renderTimestampList();
+        updateActiveInfo();
+        generatePreview();
+    });
+});
+
+// Watch the URL input for YouTube links
+document.getElementById('url').addEventListener('input', function () {
+    const val = this.value.trim();
+    if (isYouTubeUrl(val)) {
+        const vid = extractYouTubeVideoId(val);
+        if (vid && vid !== ytTimestampState.videoId) {
+            // New YouTube video detected
+            ytTimestampState.timestamps = [];
+            ytTimestampState.activeTimestampId = null;
+            showYouTubePanel(vid, val);
+        } else if (vid) {
+            showYouTubePanel(vid, val);
+        } else {
+            hideYouTubePanel();
+        }
+    } else {
+        if (ytTimestampState.videoId) hideYouTubePanel();
+    }
+    generatePreview();
+});
+
+
+
 // 3. QR Code Initialization
 const qrCode = new QRCodeStyling({
     width: 400,
@@ -529,7 +788,13 @@ async function generatePreview() {
             const randomHash = Math.random().toString(36).substring(2, 8);
             qrData = `https://qrweb.app/${randomHash}`;
         } else {
-            qrData = urlInput;
+            // Check for an active YouTube timestamp
+            const activeTs = ytTimestampState.timestamps.find(t => t.id === ytTimestampState.activeTimestampId);
+            if (ytTimestampState.videoId && activeTs) {
+                qrData = buildYouTubeTimestampUrl(ytTimestampState.videoId, activeTs.seconds);
+            } else {
+                qrData = urlInput;
+            }
         }
     }
 
