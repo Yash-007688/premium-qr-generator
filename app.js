@@ -248,80 +248,83 @@ function setupUpgradeModal() {
         submitBtn.disabled = true;
         submitBtn.innerText = "Connecting to Payment Gateway...";
 
-        // Set amount based on current choice
         let amount = 0;
         let description = "";
-        
+        let planName = "";
+
         if (currentModalMode === 'subs') {
-            amount = selectedTier === 'pro' ? 799 : 3999; // Amount in INR
-            description = `Upgrade to ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}`;
+            amount = selectedTier === 'pro' ? 799 : 3999;
+            description = `Upgrade to ${selectedTier === 'pro' ? 'Pro Plan' : 'Enterprise Plan'}`;
+            planName = selectedTier === 'pro' ? 'Pro Subscription' : 'Enterprise Subscription';
         } else {
-            amount = selectedPack === 'starter' ? 49 : 149; // Amount in INR
-            description = `Purchase ${selectedPack === 'starter' ? '20' : '100'} Tokens Pack`;
+            amount = selectedPack === 'starter' ? 49 : 149;
+            const tokenCount = selectedPack === 'starter' ? 20 : 100;
+            description = `Purchase ${tokenCount} Tokens Pack`;
+            planName = selectedPack === 'starter' ? 'Starter Token Pack (20)' : 'Booster Token Pack (100)';
         }
 
-        const options = {
-            key: "rzp_test_yourkeyhere", // Replace with your live / test key from Razorpay Dashboard
-            amount: amount * 100, // Amount in paise
-            currency: "INR",
-            name: "QR Web Generator",
-            description: description,
-            image: "logo.png",
-            handler: async function (response) {
-                alert(`✅ Payment Successful!\nPayment ID: ${response.razorpay_payment_id}\nProvisioning your account...`);
-                try {
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    if (session) {
-                        if (currentModalMode === 'subs') {
-                            const { error } = await supabaseClient
-                                .from('profiles')
-                                .update({ tier: selectedTier })
-                                .eq('id', session.user.id);
-                            if (error) throw error;
-                            
-                            userTier = selectedTier;
-                            updateUIForTier();
-                            generatePreview();
-                            alert(`Congratulations! You have successfully upgraded to ${selectedTier === 'pro' ? 'Pro Plan ✨' : 'Enterprise Plan 🏆'}!`);
-                        } else {
-                            // Credit tokens
-                            const tokensToAdd = selectedPack === 'starter' ? 20 : 100;
-                            const { data: profile } = await supabaseClient
-                                .from('profiles')
-                                .select('tokens')
-                                .eq('id', session.user.id)
-                                .maybeSingle();
-                            
-                            const newBalance = (profile?.tokens ?? 0) + tokensToAdd;
-                            const { error } = await supabaseClient
-                                .from('profiles')
-                                .update({ tokens: newBalance })
-                                .eq('id', session.user.id);
-                            if (error) throw error;
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            alert('Please log in again to continue.');
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Proceed to Payment";
+            return;
+        }
 
-                            alert(`Successfully added ${tokensToAdd} tokens!`);
-                        }
-                        await injectUnifiedDropdown('.dashboard-nav');
-                    }
-                } catch (err) {
-                    console.error("Database update error:", err);
-                    alert("Error updating database record: " + err.message);
-                } finally {
-                    modal.classList.remove('show');
-                }
+        const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
+        const userEmail = session.user.email || '';
+
+        const opened = openRazorpayCheckout({
+            amountInr: amount,
+            description,
+            userName,
+            userEmail,
+            onDismiss: () => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Proceed to Payment";
             },
-            theme: {
-                color: "#6366f1"
-            }
-        };
+            onSuccess: async function (response) {
+                try {
+                    if (currentModalMode === 'subs') {
+                        const result = await processSubscriptionPurchase(
+                            session.user.id,
+                            selectedTier,
+                            amount,
+                            planName,
+                            response
+                        );
+                        if (!result.success) throw new Error(result.error);
 
-        try {
-            const rzp = new Razorpay(options);
-            rzp.open();
-        } catch (e) {
-            console.error("Razorpay loading error:", e);
-            alert("Razorpay checkout failed to load. Please verify script availability.");
-        } finally {
+                        userTier = selectedTier;
+                        updateUIForTier();
+                        generatePreview();
+                        alert(`Upgraded to ${selectedTier === 'pro' ? 'Pro Plan' : 'Enterprise Plan'} successfully!`);
+                    } else {
+                        const tokensToAdd = selectedPack === 'starter' ? 20 : 100;
+                        const result = await processTokenPackPurchase(
+                            session.user.id,
+                            tokensToAdd,
+                            amount,
+                            planName,
+                            response
+                        );
+                        if (!result.success) throw new Error(result.error);
+
+                        alert(`Successfully added ${tokensToAdd} tokens! New balance: ${result.newBalance}`);
+                    }
+                    await injectUnifiedDropdown('.dashboard-nav');
+                    modal.classList.remove('show');
+                } catch (err) {
+                    console.error("Payment processing error:", err);
+                    alert("Payment received but account update failed: " + err.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Proceed to Payment";
+                }
+            }
+        });
+
+        if (!opened) {
             submitBtn.disabled = false;
             submitBtn.innerText = "Proceed to Payment";
         }

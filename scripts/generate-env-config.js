@@ -26,7 +26,8 @@ const config = {
     SUPABASE_URL: process.env.SUPABASE_URL || '',
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
     APP_URL: (process.env.APP_URL || '').replace(/\/$/, ''),
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || ''
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || ''
 };
 
 if (process.env.GOOGLE_CLIENT_SECRET) {

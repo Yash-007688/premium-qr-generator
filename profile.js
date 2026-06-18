@@ -23,47 +23,42 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // 5. Wire up token pack buy buttons with Razorpay Checkout
     document.querySelectorAll('.pack-buy-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const pack = btn.dataset.pack;
             const tokens = parseInt(btn.dataset.tokens, 10);
             const price = parseInt(btn.dataset.price, 10);
+            const planName = `${pack.charAt(0).toUpperCase() + pack.slice(1)} Token Pack (${tokens})`;
 
-            const options = {
-                key: "rzp_test_yourkeyhere", // Replace with your live / test key from Razorpay Dashboard
-                amount: price * 100, // Amount in paise
-                currency: "INR",
-                name: "QR Web Generator",
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.replace('login.html');
+                return;
+            }
+
+            openRazorpayCheckout({
+                amountInr: price,
                 description: `Purchase ${tokens} Tokens - ${pack.toUpperCase()}`,
-                image: "logo.png",
-                handler: async function (response) {
-                    alert(`✅ Payment Successful!\nPayment ID: ${response.razorpay_payment_id}\nUpdating your token balance...`);
+                userName: currentProfileName,
+                userEmail: document.getElementById('profile-email-static')?.innerText || session.user.email,
+                onSuccess: async function (response) {
                     try {
-                        const { tokens: currentBalance } = await getTokenBalance(currentUserId);
-                        const newBalance = currentBalance + tokens;
-                        const { error } = await supabaseClient
-                            .from('profiles')
-                            .update({ tokens: newBalance })
-                            .eq('id', currentUserId);
-                        if (error) throw error;
-                        
-                        alert(`Successfully added ${tokens} tokens! Your new balance is ${newBalance}.`);
+                        const result = await processTokenPackPurchase(
+                            currentUserId,
+                            tokens,
+                            price,
+                            planName,
+                            response
+                        );
+                        if (!result.success) throw new Error(result.error);
+
+                        alert(`Successfully added ${tokens} tokens! Your new balance is ${result.newBalance}.`);
                         await loadProfileData();
                         await injectUnifiedDropdown('.dashboard-nav');
                     } catch (e) {
-                        alert("Error updating tokens: " + e.message);
+                        alert('Payment received but token update failed: ' + e.message);
                     }
-                },
-                prefill: {
-                    name: currentProfileName,
-                    email: document.getElementById('profile-email-static').innerText
-                },
-                theme: {
-                    color: "#6366f1"
                 }
-            };
-
-            const rzp = new Razorpay(options);
-            rzp.open();
+            });
         });
     });
 

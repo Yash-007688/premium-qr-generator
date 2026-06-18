@@ -697,8 +697,10 @@ async function adjustUserTokens() {
     try {
         const { error } = await supabaseClient
             .from('user_tokens')
-            .update({ balance: newBalance })
-            .eq('user_id', activeTokenUserId);
+            .upsert(
+                { user_id: activeTokenUserId, balance: newBalance },
+                { onConflict: 'user_id' }
+            );
 
         if (error) throw error;
 

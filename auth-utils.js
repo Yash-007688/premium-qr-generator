@@ -14,8 +14,10 @@ async function ensureUserProfile(session) {
     );
 
     if (error) console.error('Profile save failed:', error.message);
-    // Attempt to capture user's current public IP and record it in `user_ips` table.
-    // Uses a public IP lookup service then upserts into Postgres. Fails silently.
+
+    await ensureUserTokens(session.user.id);
+
+    // Attempt to capture user's current public IP
     (async () => {
         try {
             const resp = await fetch('https://api.ipify.org?format=json');
@@ -172,8 +174,39 @@ async function requireAdmin() {
 }
 
 // === TOKEN SYSTEM HELPERS ===
+async function ensureUserTokens(userId, startingBalance = 20) {
+    try {
+        const { data } = await supabaseClient
+            .from('user_tokens')
+            .select('user_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (data?.user_id) return { success: true };
+
+        const { error } = await supabaseClient.from('user_tokens').upsert(
+            {
+                user_id: userId,
+                balance: startingBalance,
+                total_spent: 0
+            },
+            { onConflict: 'user_id' }
+        );
+
+        if (error) {
+            console.error('ensureUserTokens failed:', error.message);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (e) {
+        console.error('ensureUserTokens failed:', e);
+        return { success: false, error: e.message };
+    }
+}
+
 async function getTokenBalance(userId) {
     try {
+        await ensureUserTokens(userId);
         const { data, error } = await supabaseClient
             .from('user_tokens')
             .select('balance, total_spent')
@@ -189,6 +222,7 @@ async function getTokenBalance(userId) {
 
 async function deductTokens(userId, amount) {
     try {
+        await ensureUserTokens(userId);
         const { tokens: currentBalance } = await getTokenBalance(userId);
         if (currentBalance < amount) {
             return { success: false, newBalance: currentBalance, error: 'Insufficient tokens' };
@@ -202,9 +236,15 @@ async function deductTokens(userId, amount) {
         const currentUsed = userTokenRow?.total_spent ?? 0;
         const { error } = await supabaseClient
             .from('user_tokens')
-            .update({ balance: newBalance, total_spent: currentUsed + amount })
-            .eq('user_id', userId);
+            .upsert(
+                { user_id: userId, balance: newBalance, total_spent: currentUsed + amount },
+                { onConflict: 'user_id' }
+            );
         if (error) return { success: false, newBalance: currentBalance, error: error.message };
+
+        if (typeof updateNavbarTokenBadge === 'function') {
+            updateNavbarTokenBadge(newBalance);
+        }
         return { success: true, newBalance, error: null };
     } catch (e) {
         console.error('Failed to deduct tokens:', e);
@@ -214,17 +254,29 @@ async function deductTokens(userId, amount) {
 
 async function addTokens(userId, amount) {
     try {
+        await ensureUserTokens(userId);
         const { tokens: currentBalance } = await getTokenBalance(userId);
         const newBalance = currentBalance + amount;
+        const { data: userTokenRow } = await supabaseClient
+            .from('user_tokens')
+            .select('total_spent')
+            .eq('user_id', userId)
+            .maybeSingle();
         const { error } = await supabaseClient
             .from('user_tokens')
-            .update({ balance: newBalance })
-            .eq('user_id', userId);
-        if (error) return { success: false, error: error.message };
+            .upsert(
+                {
+                    user_id: userId,
+                    balance: newBalance,
+                    total_spent: userTokenRow?.total_spent ?? 0
+                },
+                { onConflict: 'user_id' }
+            );
+        if (error) return { success: false, newBalance: currentBalance, error: error.message };
         return { success: true, newBalance, error: null };
     } catch (e) {
         console.error('Failed to add tokens:', e);
-        return { success: false, error: e.message };
+        return { success: false, newBalance: 0, error: e.message };
     }
 }
 
