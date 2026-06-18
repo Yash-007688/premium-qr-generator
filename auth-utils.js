@@ -174,21 +174,51 @@ async function requireAdmin() {
 }
 
 // === TOKEN SYSTEM HELPERS ===
+async function syncTokensToProfile(userId, balance, totalSpent) {
+    const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+            tokens: balance,
+            total_tokens_used: totalSpent
+        })
+        .eq('id', userId);
+
+    if (error) {
+        console.error('syncTokensToProfile failed:', error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: true, error: null };
+}
+
 async function ensureUserTokens(userId, startingBalance = 20) {
     try {
-        const { data } = await supabaseClient
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('tokens, total_tokens_used')
+            .eq('id', userId)
+            .maybeSingle();
+
+        const { data: tokenRow } = await supabaseClient
             .from('user_tokens')
-            .select('user_id')
+            .select('balance, total_spent')
             .eq('user_id', userId)
             .maybeSingle();
 
-        if (data?.user_id) return { success: true };
+        if (tokenRow) {
+            const balance = tokenRow.balance ?? 0;
+            const spent = tokenRow.total_spent ?? 0;
+            await syncTokensToProfile(userId, balance, spent);
+            return { success: true, balance, totalSpent: spent };
+        }
+
+        const balance = profile?.tokens ?? startingBalance;
+        const spent = profile?.total_tokens_used ?? 0;
 
         const { error } = await supabaseClient.from('user_tokens').upsert(
             {
                 user_id: userId,
-                balance: startingBalance,
-                total_spent: 0
+                balance,
+                total_spent: spent
             },
             { onConflict: 'user_id' }
         );
@@ -197,7 +227,9 @@ async function ensureUserTokens(userId, startingBalance = 20) {
             console.error('ensureUserTokens failed:', error.message);
             return { success: false, error: error.message };
         }
-        return { success: true };
+
+        await syncTokensToProfile(userId, balance, spent);
+        return { success: true, balance, totalSpent: spent };
     } catch (e) {
         console.error('ensureUserTokens failed:', e);
         return { success: false, error: e.message };
@@ -242,6 +274,8 @@ async function deductTokens(userId, amount) {
             );
         if (error) return { success: false, newBalance: currentBalance, error: error.message };
 
+        await syncTokensToProfile(userId, newBalance, currentUsed + amount);
+
         if (typeof updateNavbarTokenBadge === 'function') {
             updateNavbarTokenBadge(newBalance);
         }
@@ -273,9 +307,44 @@ async function addTokens(userId, amount) {
                 { onConflict: 'user_id' }
             );
         if (error) return { success: false, newBalance: currentBalance, error: error.message };
+
+        const totalSpent = userTokenRow?.total_spent ?? 0;
+        await syncTokensToProfile(userId, newBalance, totalSpent);
+
+        if (typeof updateNavbarTokenBadge === 'function') {
+            updateNavbarTokenBadge(newBalance);
+        }
         return { success: true, newBalance, error: null };
     } catch (e) {
         console.error('Failed to add tokens:', e);
+        return { success: false, newBalance: 0, error: e.message };
+    }
+}
+
+async function setUserTokenBalance(userId, newBalance) {
+    try {
+        const balance = Math.max(0, newBalance);
+        await ensureUserTokens(userId, balance);
+
+        const { data: tokenRow } = await supabaseClient
+            .from('user_tokens')
+            .select('total_spent')
+            .eq('user_id', userId)
+            .maybeSingle();
+        const totalSpent = tokenRow?.total_spent ?? 0;
+
+        const { error } = await supabaseClient
+            .from('user_tokens')
+            .upsert(
+                { user_id: userId, balance, total_spent: totalSpent },
+                { onConflict: 'user_id' }
+            );
+        if (error) return { success: false, newBalance: balance, error: error.message };
+
+        await syncTokensToProfile(userId, balance, totalSpent);
+        return { success: true, newBalance: balance, totalSpent, error: null };
+    } catch (e) {
+        console.error('Failed to set token balance:', e);
         return { success: false, newBalance: 0, error: e.message };
     }
 }

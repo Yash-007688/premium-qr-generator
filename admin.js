@@ -152,9 +152,13 @@ async function fetchData() {
         // Fetch User Tokens separately
         const { data: tokenData, error: tokenError } = await supabaseClient
             .from('user_tokens')
-            .select('*');
+            .select('user_id, balance, total_spent');
 
-        // Merge tokens into authData
+        if (tokenError) {
+            console.warn('user_tokens fetch warning:', tokenError.message);
+        }
+
+        // Merge tokens into authData (user_tokens first, then profiles fallback)
         const tokenMap = {};
         if (tokenData) {
             tokenData.forEach(t => {
@@ -164,8 +168,8 @@ async function fetchData() {
 
         globalAuthData = (authData || []).map(u => ({
             ...u,
-            tokens: tokenMap[u.id]?.balance ?? 20,
-            total_tokens_used: tokenMap[u.id]?.total_spent ?? 0
+            tokens: tokenMap[u.id]?.balance ?? u.tokens ?? 20,
+            total_tokens_used: tokenMap[u.id]?.total_spent ?? u.total_tokens_used ?? 0
         }));
 
         // 2. Fetch Wi-Fi & Hotspot Data
@@ -695,16 +699,10 @@ async function adjustUserTokens() {
     confirmBtn.innerText = 'Saving...';
 
     try {
-        const { error } = await supabaseClient
-            .from('user_tokens')
-            .upsert(
-                { user_id: activeTokenUserId, balance: newBalance },
-                { onConflict: 'user_id' }
-            );
+        const result = await setUserTokenBalance(activeTokenUserId, newBalance);
+        if (!result.success) throw new Error(result.error || 'Token update failed');
 
-        if (error) throw error;
-
-        alert(`✅ Token balance updated!\n${activeTokenCurrentBalance} → ${newBalance} tokens`);
+        alert(`✅ Token balance updated!\n${activeTokenCurrentBalance} → ${result.newBalance} tokens`);
         document.getElementById('token-modal-overlay').classList.remove('show');
         activeTokenUserId = null;
         fetchData();
