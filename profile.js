@@ -21,47 +21,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 4. Load Saved Posters History
     await loadPostersHistory();
 
-    // 5. Wire up token pack buy buttons with Razorpay Checkout
-    document.querySelectorAll('.pack-buy-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const pack = btn.dataset.pack;
-            const tokens = parseInt(btn.dataset.tokens, 10);
-            const price = parseInt(btn.dataset.price, 10);
-            const planName = `${pack.charAt(0).toUpperCase() + pack.slice(1)} Token Pack (${tokens})`;
-
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.replace('login.html');
-                return;
-            }
-
-            openRazorpayCheckout({
-                amountInr: price,
-                description: `Purchase ${tokens} Tokens - ${pack.toUpperCase()}`,
-                userName: currentProfileName,
-                userEmail: document.getElementById('profile-email-static')?.innerText || session.user.email,
-                onSuccess: async function (response) {
-                    try {
-                        const result = await processTokenPackPurchase(
-                            currentUserId,
-                            tokens,
-                            price,
-                            planName,
-                            response
-                        );
-                        if (!result.success) throw new Error(result.error);
-
-                        alert(`Successfully added ${tokens} tokens! Your new balance is ${result.newBalance}.`);
-                        await loadProfileData();
-                        await injectUnifiedDropdown('.dashboard-nav');
-                    } catch (e) {
-                        alert('Payment received but token update failed: ' + e.message);
-                    }
-                }
-            });
-        });
-    });
-
     // Bind Update details form submission
     document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
 });
