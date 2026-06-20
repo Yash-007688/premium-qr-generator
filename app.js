@@ -72,22 +72,26 @@ function updateUIForTier() {
     const lockOverlaySavage = document.querySelector('[data-template="savage"] .lock-overlay');
     const lockOverlayArtDeco = document.querySelector('[data-template="artdeco"] .lock-overlay');
     const analyticsOverlay = document.getElementById('analytics-lock-overlay');
-    const advancedCustomSection = document.querySelector('.advanced-customization');
     const gradientContainer = document.getElementById('gradient-color-picker-group');
     const enableGradientCheckbox = document.getElementById('enable-gradient');
     const logoInput = document.getElementById('logo-upload');
     const dotShapeSelect = document.getElementById('dot-shape');
     const eyeShapeSelect = document.getElementById('eye-shape');
 
+    // Reset lock trigger styling classes
+    document.querySelectorAll('.premium-lock-trigger').forEach(el => {
+        el.classList.remove('premium-locked-item');
+    });
+
     if (userTier === 'free') {
-        // Show lock icons
+        // Show lock icons for templates
         if (lockOverlaySavage) lockOverlaySavage.style.display = 'flex';
         if (lockOverlayArtDeco) lockOverlayArtDeco.style.display = 'flex';
         
         // Show analytics lock overlay
         if (analyticsOverlay) analyticsOverlay.style.display = 'flex';
 
-        // Add visual lockers to inputs
+        // Add visual lockers to all premium inputs
         document.querySelectorAll('.premium-lock-trigger').forEach(el => {
             el.classList.add('premium-locked-item');
         });
@@ -122,15 +126,45 @@ function updateUIForTier() {
         const dynamicRadio = document.getElementById('dynamic-toggle-radio');
         if (dynamicRadio) dynamicRadio.disabled = true;
 
-    } else {
-        // Unlock EVERYTHING
+        // Clear custom layers and backgrounds
+        canvasLayers = [];
+        uploadedBgImageDataUrl = null;
+        qrPosition = { x: 200, y: 200, size: 400 };
+        renderLayersUI();
+
+    } else if (userTier === 'pro') {
+        // PRO: Unlock basic features but lock Enterprise exclusive features
         if (lockOverlaySavage) lockOverlaySavage.style.display = 'none';
         if (lockOverlayArtDeco) lockOverlayArtDeco.style.display = 'none';
         if (analyticsOverlay) analyticsOverlay.style.display = 'none';
 
+        // Mark only enterprise features as locked
         document.querySelectorAll('.premium-lock-trigger').forEach(el => {
-            el.classList.remove('premium-locked-item');
+            const feat = el.getAttribute('data-feature') || '';
+            if (feat.toLowerCase().includes('enterprise')) {
+                el.classList.add('premium-locked-item');
+            }
         });
+
+        if (enableGradientCheckbox) enableGradientCheckbox.disabled = false;
+        if (logoInput) logoInput.disabled = false;
+        if (dotShapeSelect) dotShapeSelect.disabled = false;
+        if (eyeShapeSelect) eyeShapeSelect.disabled = false;
+        
+        const dynamicRadio = document.getElementById('dynamic-toggle-radio');
+        if (dynamicRadio) dynamicRadio.disabled = false;
+
+        // Clear custom layers and backgrounds if downgraded to Pro
+        canvasLayers = [];
+        uploadedBgImageDataUrl = null;
+        qrPosition = { x: 200, y: 200, size: 400 };
+        renderLayersUI();
+
+    } else if (userTier === 'enterprise') {
+        // ENTERPRISE: Unlock EVERYTHING
+        if (lockOverlaySavage) lockOverlaySavage.style.display = 'none';
+        if (lockOverlayArtDeco) lockOverlayArtDeco.style.display = 'none';
+        if (analyticsOverlay) analyticsOverlay.style.display = 'none';
 
         if (enableGradientCheckbox) enableGradientCheckbox.disabled = false;
         if (logoInput) logoInput.disabled = false;
@@ -157,10 +191,17 @@ function setupLocksAndInterceptors() {
     // Intercept premium option clicks
     document.querySelectorAll('.premium-lock-trigger').forEach(el => {
         el.addEventListener('click', (e) => {
+            const feature = el.getAttribute('data-feature') || '';
+            const isEnterpriseOnly = feature.toLowerCase().includes('enterprise');
+
             if (userTier === 'free') {
                 e.stopPropagation();
                 e.preventDefault();
-                showUpgradeModal(el.getAttribute('data-feature'));
+                showUpgradeModal(feature);
+            } else if (userTier === 'pro' && isEnterpriseOnly) {
+                e.stopPropagation();
+                e.preventDefault();
+                showUpgradeModal(feature);
             }
         });
     });
