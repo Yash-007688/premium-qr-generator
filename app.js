@@ -1137,7 +1137,7 @@ function renderLayersUI() {
     canvasLayers.forEach(layer => {
         const div = document.createElement('div');
         div.className = 'layer-control-card';
-        div.style.cssText = 'background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:0.5rem; padding:0.6rem; display:flex; flex-direction:column; gap:0.4rem; font-size:0.8rem;';
+        div.style.cssText = 'display:flex; flex-direction:column; gap:0.4rem;';
         
         let specificControls = '';
         if (layer.type === 'text') {
