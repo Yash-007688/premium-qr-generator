@@ -12,7 +12,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Web | Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="qr-code-styling.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="logo.png" type="image/png">
@@ -268,6 +268,28 @@
                 <div class="input-group">
                     <label for="poster-subtitle">Bottom Subtitle</label>
                     <input type="text" id="poster-subtitle" class="form-input" placeholder="e.g. Point your camera at the code" value="Point your camera at the code" maxlength="50">
+                </div>
+
+                <!-- Canvas Design Layers Section (Pro) -->
+                <div class="section-title">Canvas Design Layers <span class="badge-pro">PRO</span></div>
+                <div class="advanced-customization premium-lock-trigger" data-feature="Canvas Design Layers" style="margin-top:0.5rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <!-- Custom Background Upload -->
+                    <div class="input-group">
+                        <label for="bg-image-upload">Upload Custom Background Image</label>
+                        <input type="file" id="bg-image-upload" accept="image/*" class="form-input" style="padding:0.4rem;">
+                        <button id="remove-bg-image-btn" class="secondary-btn" style="display:none; padding:0.4rem 0.8rem; font-size:0.75rem; margin-top:0.3rem;">Remove Background</button>
+                    </div>
+
+                    <!-- Overlay Controls -->
+                    <div style="display:flex; gap:0.5rem; margin-top:0.4rem;">
+                        <button id="add-text-layer-btn" class="primary-btn" style="font-size:0.75rem; padding:0.5rem; flex:1;">➕ Add Text</button>
+                        <button id="add-image-layer-btn" class="primary-btn" style="font-size:0.75rem; padding:0.5rem; flex:1;">➕ Add Image</button>
+                    </div>
+
+                    <!-- Layers List Container -->
+                    <div id="layers-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.2rem; border-top: 1px solid var(--border-color); padding-top: 0.8rem; margin-top: 0.4rem;">
+                        <p style="font-size:0.75rem; color:var(--text-muted); text-align:center;" id="no-layers-msg">No custom layers yet. Drag elements on the canvas once added!</p>
+                    </div>
                 </div>
             </aside>
 

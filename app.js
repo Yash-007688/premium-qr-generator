@@ -55,6 +55,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupLocksAndInterceptors();
     setupUpgradeModal();
     setupLogoUpload();
+    setupCanvasLayersSystem();
 
     // Generate initial preview once user is loaded
     generatePreview();
@@ -845,7 +846,11 @@ async function generatePreview() {
         cornersSquareOptions: {
             type: eyeType
         },
-        image: (uploadedLogoDataUrl && userTier !== 'free') ? uploadedLogoDataUrl : "",
+        image: (uploadedLogoDataUrl && userTier !== 'free')
+            ? uploadedLogoDataUrl
+            : (activeTab === 'url' && isYouTubeUrl(document.getElementById('url').value.trim()))
+                ? `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`
+                : "",
         imageOptions: {
             crossOrigin: "anonymous",
             margin: 6,
@@ -863,6 +868,30 @@ async function generatePreview() {
 }
 
 // 5. Draw the Final Poster on HTML5 Canvas
+// Image cache helper
+const imageCache = {};
+function getCachedImage(src, callback) {
+    if (imageCache[src]) {
+        if (imageCache[src].complete) {
+            callback(imageCache[src]);
+        } else {
+            imageCache[src].onload = () => callback(imageCache[src]);
+        }
+        return;
+    }
+    const img = new Image();
+    img.src = src;
+    imageCache[src] = img;
+    img.onload = () => {
+        callback(img);
+    };
+}
+
+let uploadedBgImageDataUrl = null;
+let canvasLayers = [];
+let qrPosition = { x: 200, y: 200, size: 400 };
+let activeDragElement = null; // { type: 'qr' | 'layer', id: string, offsetX: number, offsetY: number }
+
 function drawPoster() {
     const rawCanvas = document.querySelector('#qr-code-raw canvas');
     if (!rawCanvas) return;
@@ -875,26 +904,64 @@ function drawPoster() {
     // Clear previous drawing
     ctx.clearRect(0, 0, w, h);
 
-    // Draw the selected background template
-    if (currentTemplate === 'minimalist') {
-        drawMinimalist(ctx, w, h);
-    } else if (currentTemplate === 'savage') {
-        drawSavage(ctx, w, h);
-    } else if (currentTemplate === 'artdeco') {
-        drawArtDeco(ctx, w, h);
+    // Draw background (either uploaded custom bg or template)
+    if (uploadedBgImageDataUrl && userTier !== 'free') {
+        const bgImg = imageCache[uploadedBgImageDataUrl];
+        if (bgImg) {
+            ctx.drawImage(bgImg, 0, 0, w, h);
+        } else {
+            getCachedImage(uploadedBgImageDataUrl, () => drawPoster());
+            // Draw placeholder background color while loading
+            ctx.fillStyle = "#121821";
+            ctx.fillRect(0, 0, w, h);
+        }
+    } else {
+        // Draw the selected background template
+        if (currentTemplate === 'minimalist') {
+            drawMinimalist(ctx, w, h);
+        } else if (currentTemplate === 'savage') {
+            drawSavage(ctx, w, h);
+        } else if (currentTemplate === 'artdeco') {
+            drawArtDeco(ctx, w, h);
+        }
     }
 
-    // Draw the QR code in the center
-    const qrW = 400;
-    const qrH = 400;
-    const offsetX = (w - qrW) / 2;
-    const offsetY = (h - qrH) / 2;
+    // Draw the QR code (draggable)
+    const qrX = qrPosition.x;
+    const qrY = qrPosition.y;
+    const qrS = qrPosition.size;
 
     // Add a slight shadow to the QR code box
     ctx.shadowColor = "rgba(0,0,0,0.3)";
     ctx.shadowBlur = 20;
-    ctx.drawImage(rawCanvas, offsetX, offsetY, qrW, qrH);
+    ctx.drawImage(rawCanvas, qrX, qrY, qrS, qrS);
     ctx.shadowBlur = 0; // Reset shadow
+
+    // Draw custom overlay layers (only for Pro/Enterprise)
+    if (userTier !== 'free') {
+        canvasLayers.forEach(layer => {
+            ctx.save();
+            ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
+            if (layer.type === 'text') {
+                let fontStyle = '';
+                if (layer.italic) fontStyle += 'italic ';
+                if (layer.bold) fontStyle += 'bold ';
+                ctx.font = `${fontStyle}${layer.fontSize}px '${layer.fontFamily}', sans-serif`;
+                ctx.fillStyle = layer.color || '#000000';
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left';
+                ctx.fillText(layer.text, layer.x, layer.y);
+            } else if (layer.type === 'image' && layer.src) {
+                const img = imageCache[layer.src];
+                if (img) {
+                    ctx.drawImage(img, layer.x, layer.y, layer.width, layer.height);
+                } else {
+                    getCachedImage(layer.src, () => drawPoster());
+                }
+            }
+            ctx.restore();
+        });
+    }
 
     // Inject Watermark for Free Tier Users
     if (userTier === 'free') {
@@ -906,6 +973,348 @@ function drawPoster() {
 
     // Show download button once ready
     document.getElementById('download-btn').style.display = 'block';
+}
+
+function setupCanvasInteraction() {
+    const canvas = document.getElementById('poster-canvas');
+    if (!canvas) return;
+
+    function getCanvasCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: ((clientX - rect.left) / rect.width) * canvas.width,
+            y: ((clientY - rect.top) / rect.height) * canvas.height
+        };
+    }
+
+    function onStart(e) {
+        if (userTier === 'free') return;
+        const coords = getCanvasCoords(e);
+        const mouseX = coords.x;
+        const mouseY = coords.y;
+
+        // Check if clicked inside any layer (loop backwards to select topmost layer first)
+        for (let i = canvasLayers.length - 1; i >= 0; i--) {
+            const layer = canvasLayers[i];
+            let hit = false;
+            if (layer.type === 'text') {
+                const textWidth = layer.text.length * (layer.fontSize * 0.6);
+                const textHeight = layer.fontSize;
+                if (mouseX >= layer.x && mouseX <= layer.x + textWidth &&
+                    mouseY >= layer.y && mouseY <= layer.y + textHeight) {
+                    hit = true;
+                }
+            } else if (layer.type === 'image') {
+                if (mouseX >= layer.x && mouseX <= layer.x + layer.width &&
+                    mouseY >= layer.y && mouseY <= layer.y + layer.height) {
+                    hit = true;
+                }
+            }
+
+            if (hit) {
+                activeDragElement = {
+                    type: 'layer',
+                    id: layer.id,
+                    offsetX: mouseX - layer.x,
+                    offsetY: mouseY - layer.y
+                };
+                e.preventDefault();
+                return;
+            }
+        }
+
+        // Check if clicked inside QR code
+        if (mouseX >= qrPosition.x && mouseX <= qrPosition.x + qrPosition.size &&
+            mouseY >= qrPosition.y && mouseY <= qrPosition.y + qrPosition.size) {
+            activeDragElement = {
+                type: 'qr',
+                offsetX: mouseX - qrPosition.x,
+                offsetY: mouseY - qrPosition.y
+            };
+            e.preventDefault();
+            return;
+        }
+    }
+
+    function onMove(e) {
+        if (!activeDragElement) return;
+        const coords = getCanvasCoords(e);
+        const mouseX = coords.x;
+        const mouseY = coords.y;
+
+        if (activeDragElement.type === 'layer') {
+            const layer = canvasLayers.find(l => l.id === activeDragElement.id);
+            if (layer) {
+                layer.x = Math.round(mouseX - activeDragElement.offsetX);
+                layer.y = Math.round(mouseY - activeDragElement.offsetY);
+                layer.x = Math.max(-100, Math.min(canvas.width, layer.x));
+                layer.y = Math.max(-100, Math.min(canvas.height, layer.y));
+                drawPoster();
+            }
+        } else if (activeDragElement.type === 'qr') {
+            qrPosition.x = Math.round(mouseX - activeDragElement.offsetX);
+            qrPosition.y = Math.round(mouseY - activeDragElement.offsetY);
+            qrPosition.x = Math.max(0, Math.min(canvas.width - qrPosition.size, qrPosition.x));
+            qrPosition.y = Math.max(0, Math.min(canvas.height - qrPosition.size, qrPosition.y));
+            drawPoster();
+        }
+        e.preventDefault();
+    }
+
+    function onEnd() {
+        activeDragElement = null;
+    }
+
+    canvas.addEventListener('mousedown', onStart);
+    canvas.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+}
+
+function renderLayersUI() {
+    const container = document.getElementById('layers-container');
+    if (!container) return;
+
+    const noLayersMsg = document.getElementById('no-layers-msg');
+    if (canvasLayers.length === 0) {
+        container.innerHTML = '';
+        if (noLayersMsg) {
+            noLayersMsg.style.display = 'block';
+            container.appendChild(noLayersMsg);
+        }
+        return;
+    }
+
+    if (noLayersMsg) noLayersMsg.style.display = 'none';
+    container.innerHTML = '';
+
+    canvasLayers.forEach(layer => {
+        const div = document.createElement('div');
+        div.className = 'layer-control-card';
+        div.style.cssText = 'background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:0.5rem; padding:0.6rem; display:flex; flex-direction:column; gap:0.4rem; font-size:0.8rem;';
+        
+        let specificControls = '';
+        if (layer.type === 'text') {
+            specificControls = `
+                <input type="text" class="layer-text-input form-input" value="${layer.text}" placeholder="Text content" style="padding:0.3rem 0.5rem; font-size:0.75rem;">
+                <div style="display:flex; gap:0.3rem; align-items:center;">
+                    <select class="layer-font-family form-input" style="padding:0.2rem; font-size:0.75rem; flex:1;">
+                        <option value="Inter" ${layer.fontFamily === 'Inter' ? 'selected' : ''}>Inter</option>
+                        <option value="Montserrat" ${layer.fontFamily === 'Montserrat' ? 'selected' : ''}>Montserrat</option>
+                        <option value="Outfit" ${layer.fontFamily === 'Outfit' ? 'selected' : ''}>Outfit</option>
+                        <option value="Pacifico" ${layer.fontFamily === 'Pacifico' ? 'selected' : ''}>Pacifico</option>
+                        <option value="Playfair Display" ${layer.fontFamily === 'Playfair Display' ? 'selected' : ''}>Playfair Display</option>
+                        <option value="Impact" ${layer.fontFamily === 'Impact' ? 'selected' : ''}>Impact</option>
+                        <option value="Courier New" ${layer.fontFamily === 'Courier New' ? 'selected' : ''}>Courier New</option>
+                    </select>
+                    <input type="color" class="layer-color-input" value="${layer.color || '#ffffff'}" style="width:28px; height:24px; border:none; padding:0; cursor:pointer; background:none;">
+                </div>
+                <div style="display:flex; gap:0.4rem; align-items:center; justify-content:space-between; font-size:0.7rem;">
+                    <label style="display:flex; align-items:center; gap:0.2rem; cursor:pointer;">
+                        <input type="checkbox" class="layer-bold-checkbox" ${layer.bold ? 'checked' : ''}> Bold
+                    </label>
+                    <label style="display:flex; align-items:center; gap:0.2rem; cursor:pointer;">
+                        <input type="checkbox" class="layer-italic-checkbox" ${layer.italic ? 'checked' : ''}> Italic
+                    </label>
+                    <div style="display:flex; align-items:center; gap:0.2rem;">
+                        <span>Size:</span>
+                        <input type="number" class="layer-size-input form-input" value="${layer.fontSize}" min="10" max="150" style="width:45px; padding:0.1rem 0.2rem; font-size:0.7rem;">
+                    </div>
+                </div>
+            `;
+        } else if (layer.type === 'image') {
+            specificControls = `
+                <div style="display:flex; gap:0.4rem; align-items:center; font-size:0.7rem; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:0.2rem;">
+                        <span>W:</span>
+                        <input type="number" class="layer-w-input form-input" value="${layer.width}" min="10" max="800" style="width:45px; padding:0.1rem 0.2rem; font-size:0.7rem;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.2rem;">
+                        <span>H:</span>
+                        <input type="number" class="layer-h-input form-input" value="${layer.height}" min="10" max="800" style="width:45px; padding:0.1rem 0.2rem; font-size:0.7rem;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.2rem;">
+                        <span>Opac:</span>
+                        <input type="number" class="layer-opacity-input form-input" value="${layer.opacity !== undefined ? layer.opacity : 1}" min="0.1" max="1" step="0.1" style="width:40px; padding:0.1rem 0.2rem; font-size:0.7rem;">
+                    </div>
+                </div>
+            `;
+        }
+
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:0.2rem;">
+                <strong style="color:var(--primary); text-transform:capitalize; font-size:0.75rem;">${layer.type} Layer</strong>
+                <button class="layer-delete-btn" style="background:none; border:none; color:#ef4444; font-size:0.8rem; cursor:pointer; font-weight:bold;">✕</button>
+            </div>
+            ${specificControls}
+        `;
+
+        if (layer.type === 'text') {
+            const txtInput = div.querySelector('.layer-text-input');
+            txtInput.addEventListener('input', () => {
+                layer.text = txtInput.value;
+                drawPoster();
+            });
+
+            const fontSel = div.querySelector('.layer-font-family');
+            fontSel.addEventListener('change', () => {
+                layer.fontFamily = fontSel.value;
+                drawPoster();
+            });
+
+            const colorIn = div.querySelector('.layer-color-input');
+            colorIn.addEventListener('input', () => {
+                layer.color = colorIn.value;
+                drawPoster();
+            });
+
+            const boldCb = div.querySelector('.layer-bold-checkbox');
+            boldCb.addEventListener('change', () => {
+                layer.bold = boldCb.checked;
+                drawPoster();
+            });
+
+            const italicCb = div.querySelector('.layer-italic-checkbox');
+            italicCb.addEventListener('change', () => {
+                layer.italic = italicCb.checked;
+                drawPoster();
+            });
+
+            const sizeIn = div.querySelector('.layer-size-input');
+            sizeIn.addEventListener('input', () => {
+                layer.fontSize = parseInt(sizeIn.value) || 20;
+                drawPoster();
+            });
+        } else if (layer.type === 'image') {
+            const wIn = div.querySelector('.layer-w-input');
+            wIn.addEventListener('input', () => {
+                layer.width = parseInt(wIn.value) || 100;
+                drawPoster();
+            });
+
+            const hIn = div.querySelector('.layer-h-input');
+            hIn.addEventListener('input', () => {
+                layer.height = parseInt(hIn.value) || 100;
+                drawPoster();
+            });
+
+            const opacIn = div.querySelector('.layer-opacity-input');
+            opacIn.addEventListener('input', () => {
+                layer.opacity = parseFloat(opacIn.value) || 1;
+                drawPoster();
+            });
+        }
+
+        div.querySelector('.layer-delete-btn').addEventListener('click', () => {
+            canvasLayers = canvasLayers.filter(l => l.id !== layer.id);
+            renderLayersUI();
+            drawPoster();
+        });
+
+        container.appendChild(div);
+    });
+}
+
+function setupCanvasLayersSystem() {
+    const bgInput = document.getElementById('bg-image-upload');
+    const removeBgBtn = document.getElementById('remove-bg-image-btn');
+    const addTextBtn = document.getElementById('add-text-layer-btn');
+    const addImageBtn = document.getElementById('add-image-layer-btn');
+
+    if (bgInput) {
+        bgInput.addEventListener('change', function(e) {
+            if (userTier === 'free') {
+                bgInput.value = '';
+                showUpgradeModal('Custom Backgrounds');
+                return;
+            }
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedBgImageDataUrl = event.target.result;
+                removeBgBtn.style.display = 'block';
+                drawPoster();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (removeBgBtn) {
+        removeBgBtn.addEventListener('click', () => {
+            uploadedBgImageDataUrl = null;
+            if (bgInput) bgInput.value = '';
+            removeBgBtn.style.display = 'none';
+            drawPoster();
+        });
+    }
+
+    if (addTextBtn) {
+        addTextBtn.addEventListener('click', () => {
+            if (userTier === 'free') {
+                showUpgradeModal('Custom Text Overlay Layers');
+                return;
+            }
+            const newLayer = {
+                id: 'text_' + Date.now(),
+                type: 'text',
+                text: 'New Customizable Text',
+                x: 100,
+                y: 150 + (canvasLayers.length * 30),
+                fontSize: 36,
+                fontFamily: 'Montserrat',
+                color: '#ffffff',
+                bold: true,
+                italic: false
+            };
+            canvasLayers.push(newLayer);
+            renderLayersUI();
+            drawPoster();
+        });
+    }
+
+    if (addImageBtn) {
+        addImageBtn.addEventListener('click', () => {
+            if (userTier === 'free') {
+                showUpgradeModal('Custom Image Overlay Layers');
+                return;
+            }
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const newLayer = {
+                        id: 'image_' + Date.now(),
+                        type: 'image',
+                        src: event.target.result,
+                        x: 250,
+                        y: 250,
+                        width: 150,
+                        height: 150,
+                        opacity: 1.0
+                    };
+                    canvasLayers.push(newLayer);
+                    renderLayersUI();
+                    drawPoster();
+                };
+                reader.readAsDataURL(file);
+            };
+            fileInput.click();
+        });
+    }
+
+    setupCanvasInteraction();
 }
 
 // === TEMPLATE DRAWING FUNCTIONS ===
