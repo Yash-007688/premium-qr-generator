@@ -8,10 +8,12 @@ let globalWifiData = [];
 let globalLinkData = [];
 let globalPaymentData = [];
 
-// Keep track of user being banned / token-edited
+// Keep track of user being banned / token-edited / tier-edited
 let activeBanUserId = null;
 let activeTokenUserId = null;
 let activeTokenCurrentBalance = 0;
+let activeTierUserId = null;
+let activeTierCurrent = 'free';
 
 // Protect Admin Page (admins only)
 window.addEventListener('DOMContentLoaded', async () => {
@@ -34,6 +36,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('token-confirm-btn').addEventListener('click', adjustUserTokens);
+
+    document.getElementById('tier-cancel-btn').addEventListener('click', () => {
+        document.getElementById('tier-modal-overlay').classList.remove('show');
+        activeTierUserId = null;
+    });
+
+    document.getElementById('tier-confirm-btn').addEventListener('click', saveUserTierPlan);
 
     // Bind Advanced Ban Modal Interactivity
     const modalOverlay = document.getElementById('ban-modal-overlay');
@@ -135,7 +144,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchData() {
     // Show loading states in tables
-    document.getElementById('auth-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
+    document.getElementById('auth-table-body').innerHTML = '<tr><td colspan="7" class="empty-state">Loading...</td></tr>';
     document.getElementById('wifi-table-body').innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
     document.getElementById('link-table-body').innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
     document.getElementById('payment-table-body').innerHTML = '<tr><td colspan="8" class="empty-state">Loading...</td></tr>';
@@ -215,7 +224,7 @@ async function fetchData() {
 
     } catch (e) {
         console.error("Error fetching data:", e);
-        const errMsg = `<tr><td colspan="6" class="empty-state" style="color:#ef4444; font-weight:600;">
+        const errMsg = `<tr><td colspan="7" class="empty-state" style="color:#ef4444; font-weight:600;">
             Database Error: ${e.message || "Please run the migration SQL script in Supabase first."}
         </td></tr>`;
         document.getElementById('auth-table-body').innerHTML = errMsg;
@@ -407,7 +416,7 @@ function processAndDrawCharts() {
 function renderAuthTable(data) {
     const tbody = document.getElementById('auth-table-body');
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users registered yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No users registered yet.</td></tr>';
         return;
     }
 
@@ -417,6 +426,13 @@ function renderAuthTable(data) {
         const role = row.role || 'user';
         const roleLabel = role === 'admin' ? 'Admin' : 'User';
         const roleColor = role === 'admin' ? '#f97316' : 'var(--text-muted)';
+
+        const tier = row.tier || 'free';
+        const tierLabel = tier === 'pro' ? 'Pro ✨' : tier === 'enterprise' ? 'Enterprise 🏆' : 'Free';
+        const tierColor = tier === 'pro' ? '#a78bfa' : tier === 'enterprise' ? '#fbbf24' : 'var(--text-muted)';
+        const tierCell = `<span style="color:${tierColor}; font-weight:600;">${tierLabel}</span>
+            <button class="mod-btn" style="padding:0.2rem 0.5rem; font-size:0.72rem; margin-left:0.35rem; background:rgba(251,191,36,0.12); border-color:rgba(251,191,36,0.3); color:#fbbf24;"
+                onclick="editUserTier('${row.id}', '${(row.full_name || row.email || 'User').replace(/'/g, "\\'")}', '${tier}')">✏️ Plan</button>`;
         
         const statusBadge = row.is_banned 
             ? `<span class="badge badge-banned">Banned</span>` 
@@ -435,6 +451,7 @@ function renderAuthTable(data) {
             <td><strong>${row.full_name || 'N/A'}</strong></td>
             <td><a href="mailto:${row.email}" style="color:var(--primary); text-decoration:none;">${row.email}</a></td>
             <td><span style="color:${roleColor}; font-weight:600; text-transform:capitalize;">${roleLabel}</span></td>
+            <td>${tierCell}</td>
             <td>${tokenCell}</td>
             <td>${statusBadge}</td>
             <td>
@@ -702,6 +719,11 @@ async function adjustUserTokens() {
         const result = await setUserTokenBalance(activeTokenUserId, newBalance);
         if (!result.success) throw new Error(result.error || 'Token update failed');
 
+        const note = document.getElementById('token-adjust-note').value.trim();
+        if (typeof recordAdminTokenAdjustment === 'function') {
+            await recordAdminTokenAdjustment(activeTokenUserId, adjustBy, note);
+        }
+
         alert(`✅ Token balance updated!\n${activeTokenCurrentBalance} → ${result.newBalance} tokens`);
         document.getElementById('token-modal-overlay').classList.remove('show');
         activeTokenUserId = null;
@@ -712,5 +734,44 @@ async function adjustUserTokens() {
     } finally {
         confirmBtn.disabled = false;
         confirmBtn.innerText = 'Save Changes';
+    }
+}
+
+window.editUserTier = function(userId, userName, currentTier) {
+    activeTierUserId = userId;
+    activeTierCurrent = currentTier || 'free';
+    document.getElementById('tier-modal-username').innerText = userName;
+    document.getElementById('tier-modal-current').innerText =
+        currentTier === 'pro' ? 'Pro ✨' : currentTier === 'enterprise' ? 'Enterprise 🏆' : 'Free';
+    document.getElementById('tier-select').value = currentTier || 'free';
+    document.getElementById('tier-modal-overlay').classList.add('show');
+};
+
+async function saveUserTierPlan() {
+    if (!activeTierUserId) return;
+
+    const newTier = document.getElementById('tier-select').value;
+    const confirmBtn = document.getElementById('tier-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = 'Saving...';
+
+    try {
+        const result = await applyUserTierPlan(activeTierUserId, newTier, {
+            source: 'admin_manual',
+            planSuffix: 'Admin Panel'
+        });
+        if (!result.success) throw new Error(result.error || 'Plan update failed');
+
+        const tierLabel = newTier === 'pro' ? 'Pro' : newTier === 'enterprise' ? 'Enterprise' : 'Free';
+        alert(`✅ Plan updated!\n${activeTierCurrent} → ${tierLabel}\nTokens set to ${result.tokens} (synced across all tables)`);
+        document.getElementById('tier-modal-overlay').classList.remove('show');
+        activeTierUserId = null;
+        fetchData();
+    } catch (e) {
+        console.error('Failed to update plan:', e);
+        alert(`Error: ${e.message}`);
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = 'Save Plan';
     }
 }

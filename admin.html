@@ -133,13 +133,14 @@
                             <th>Name</th>
                             <th>Email</th>
                             <th>Role</th>
+                            <th>Plan</th>
                             <th>🪙 Tokens</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="auth-table-body">
-                        <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                        <tr><td colspan="7" class="empty-state">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -294,6 +295,40 @@
             <div class="modal-actions">
                 <button class="action-btn" style="background-color:transparent; border:1px solid var(--border-color); color:var(--text-main);" id="token-cancel-btn">Cancel</button>
                 <button class="action-btn" style="background: linear-gradient(135deg,#6366f1,#8b5cf6);" id="token-confirm-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📦 PLAN / TIER EDIT MODAL -->
+    <div class="modal-overlay" id="tier-modal-overlay">
+        <div class="ban-modal">
+            <h3>📦 Change User Plan</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+                Plan change auto-syncs tokens, user_tokens, profiles &amp; payments table.
+            </p>
+
+            <div class="modal-group">
+                <label>User</label>
+                <div id="tier-modal-username" style="font-weight:700; color:var(--text-main); font-size:1rem; padding:0.5rem 0;">—</div>
+            </div>
+
+            <div class="modal-group">
+                <label>Current Plan</label>
+                <div id="tier-modal-current" style="font-size:1.2rem; font-weight:700; color:#fbbf24;">—</div>
+            </div>
+
+            <div class="modal-group">
+                <label for="tier-select">New Plan</label>
+                <select id="tier-select" class="form-input" style="background-color:var(--bg-color); border:1px solid var(--border-color); color:var(--text-main);">
+                    <option value="free">Free — 20 tokens</option>
+                    <option value="pro">Pro — 50 tokens</option>
+                    <option value="enterprise">Enterprise — 500 tokens</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button class="action-btn" style="background-color:transparent; border:1px solid var(--border-color); color:var(--text-main);" id="tier-cancel-btn">Cancel</button>
+                <button class="action-btn" style="background: linear-gradient(135deg,#f59e0b,#d97706);" id="tier-confirm-btn">Save Plan</button>
             </div>
         </div>
     </div>

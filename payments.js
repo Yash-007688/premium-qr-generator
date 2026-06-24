@@ -105,24 +105,21 @@ async function processTokenPackPurchase(userId, tokensToAdd, amountInr, planName
 }
 
 async function processSubscriptionPurchase(userId, tier, amountInr, planName, razorpayResponse) {
-    const { error } = await supabaseClient
-        .from('profiles')
-        .update({ tier })
-        .eq('id', userId);
-
-    if (error) {
-        return { success: false, error: error.message };
-    }
-
-    await recordPayment({
-        userId,
-        amountInr,
-        planName,
-        tokensPurchased: 0,
+    const result = await applyUserTierPlan(userId, tier, {
+        source: 'razorpay',
+        amount: amountInr,
         razorpayPaymentId: razorpayResponse?.razorpay_payment_id,
-        razorpayOrderId: razorpayResponse?.razorpay_order_id,
-        status: 'success'
+        razorpayOrderId: razorpayResponse?.razorpay_order_id
     });
 
-    return { success: true, tier, error: null };
+    if (!result.success) {
+        return { success: false, error: result.error || 'Failed to apply subscription plan' };
+    }
+
+    return {
+        success: true,
+        tier: result.tier,
+        tokens: result.tokens,
+        error: null
+    };
 }

@@ -349,6 +349,74 @@ async function setUserTokenBalance(userId, newBalance) {
     }
 }
 
+const PLAN_TIER_CONFIG = {
+    free: { tokens: 20, amount: 0, label: 'Free Plan' },
+    pro: { tokens: 50, amount: 799, label: 'Pro Subscription' },
+    enterprise: { tokens: 500, amount: 3999, label: 'Enterprise Subscription' }
+};
+
+function getPlanTokensForTier(tier) {
+    return PLAN_TIER_CONFIG[tier]?.tokens ?? PLAN_TIER_CONFIG.free.tokens;
+}
+
+async function applyUserTierPlan(userId, tier, options = {}) {
+    try {
+        const { data, error } = await supabaseClient.rpc('apply_user_tier_plan', {
+            p_user_id: userId,
+            p_tier: tier,
+            p_source: options.source || 'system',
+            p_amount: options.amount ?? null,
+            p_razorpay_payment_id: options.razorpayPaymentId ?? null,
+            p_razorpay_order_id: options.razorpayOrderId ?? null,
+            p_plan_suffix: options.planSuffix ?? null
+        });
+
+        if (error) {
+            console.error('applyUserTierPlan failed:', error.message);
+            return { success: false, error: error.message };
+        }
+
+        const result = data || {};
+        if (typeof updateNavbarTokenBadge === 'function' && result.tokens != null) {
+            updateNavbarTokenBadge(result.tokens);
+        }
+
+        return {
+            success: true,
+            tier: result.tier || tier,
+            tokens: result.tokens ?? getPlanTokensForTier(tier),
+            unchanged: !!result.unchanged,
+            error: null
+        };
+    } catch (e) {
+        console.error('applyUserTierPlan failed:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+async function recordAdminTokenAdjustment(userId, adjustBy, note) {
+    if (!adjustBy) return { success: true };
+    const planName = note?.trim()
+        ? `Manual Token Adjustment — ${note.trim()}`
+        : `Manual Token Adjustment (${adjustBy > 0 ? '+' : ''}${adjustBy})`;
+
+    const { error } = await supabaseClient.from('payments').insert({
+        user_id: userId,
+        plan_name: planName,
+        tokens_purchased: adjustBy,
+        amount: 0,
+        payment_gateway: 'admin_manual',
+        status: 'success',
+        updated_at: new Date().toISOString()
+    });
+
+    if (error) {
+        console.error('recordAdminTokenAdjustment failed:', error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: true, error: null };
+}
+
 function updateNavbarTokenBadge(balance) {
     const badge = document.getElementById('navbar-token-badge');
     if (!badge) return;

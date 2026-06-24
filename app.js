@@ -340,7 +340,7 @@ function setupUpgradeModal() {
                         userTier = selectedTier;
                         updateUIForTier();
                         generatePreview();
-                        alert(`Upgraded to ${selectedTier === 'pro' ? 'Pro Plan' : 'Enterprise Plan'} successfully!`);
+                        alert(`Upgraded to ${selectedTier === 'pro' ? 'Pro Plan' : 'Enterprise Plan'} successfully! You now have ${result.tokens} tokens.`);
                     } else {
                         const tokensToAdd = selectedPack === 'starter' ? 20 : 100;
                         const result = await processTokenPackPurchase(
