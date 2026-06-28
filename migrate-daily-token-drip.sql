@@ -168,13 +168,18 @@ BEGIN
 END;
 ';
 
-SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'daily-token-drip';
-
-SELECT cron.schedule(
-    'daily-token-drip',
-    '30 18 * * *',
-    'SELECT public.run_daily_drip_for_all_users();'
-);
+DO '
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = ''pg_cron'') THEN
+        PERFORM cron.unschedule(jobid) FROM cron.job WHERE jobname = ''daily-token-drip'';
+        PERFORM cron.schedule(
+            ''daily-token-drip'',
+            ''30 18 * * *'',
+            ''SELECT public.run_daily_drip_for_all_users();''
+        );
+    END IF;
+END;
+';
 
 CREATE OR REPLACE FUNCTION public.claim_daily_drip()
 RETURNS jsonb
