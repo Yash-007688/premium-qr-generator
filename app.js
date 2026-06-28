@@ -1528,6 +1528,52 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             return;
         }
 
+function calculateQRTokenCost() {
+    let cost = 2; // Base cost
+    const breakdown = ['Base QR: 2 tokens'];
+
+    const activeTab = document.querySelector('.tab-btn.active')?.getAttribute('data-tab');
+    if (activeTab === 'url') {
+        const isDynamic = document.querySelector('input[name="qr-type-toggle"]:checked')?.value === 'dynamic';
+        if (isDynamic) {
+            cost += 5;
+            breakdown.push('Dynamic Link: +5 tokens');
+        }
+    }
+
+    if (currentTemplate === 'savage') {
+        cost += 3;
+        breakdown.push('Savage Template: +3 tokens');
+    } else if (currentTemplate === 'artdeco') {
+        cost += 4;
+        breakdown.push('ArtDeco Template: +4 tokens');
+    }
+
+    const enableGradient = document.getElementById('enable-gradient')?.checked;
+    if (enableGradient) {
+        cost += 2;
+        breakdown.push('Gradient Color: +2 tokens');
+    }
+
+    if (uploadedLogoDataUrl) {
+        cost += 3;
+        breakdown.push('Logo Upload: +3 tokens');
+    }
+
+    if (uploadedBgImageDataUrl) {
+        cost += 5;
+        breakdown.push('Custom BG Image: +5 tokens');
+    }
+
+    if (canvasLayers && canvasLayers.length > 0) {
+        const layerCost = canvasLayers.length * 2;
+        cost += layerCost;
+        breakdown.push(`Canvas Layers (${canvasLayers.length}): +${layerCost} tokens`);
+    }
+
+    return { total: cost, details: breakdown.join('\n') };
+}
+
         // 1. Limit Check for Free Tier only
         if (userTier === 'free') {
             btn.innerText = 'Checking limits...';
@@ -1542,7 +1588,8 @@ document.getElementById('download-btn').addEventListener('click', async () => {
         }
 
         // 2. Token Check & Deduction for all tiers
-        const tokensToDeduct = 2;
+        const costInfo = calculateQRTokenCost();
+        const tokensToDeduct = costInfo.total;
         btn.innerText = 'Checking tokens...';
         const balanceInfo = await getTokenBalance(session.user.id);
         if (balanceInfo.tokens < tokensToDeduct) {
@@ -1554,7 +1601,7 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             } else {
                 limitMsg = '\n\nEnterprise plan gives you 5,00,000 tokens/month (16,667/day).';
             }
-            alert(`⚠️ Insufficient tokens!\n\nYou need ${tokensToDeduct} tokens to download this QR.\nYour balance: ${balanceInfo.tokens} tokens.${limitMsg}`);
+            alert(`⚠️ Insufficient tokens!\n\nThis QR configuration requires ${tokensToDeduct} tokens.\nYour balance: ${balanceInfo.tokens} tokens.\n\nCost Breakdown:\n${costInfo.details}${limitMsg}`);
             showUpgradeModal('QR Code Download');
             btn.innerText = originalText;
             btn.disabled = false;
