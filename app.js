@@ -1528,31 +1528,49 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             return;
         }
 
+        // 1. Limit Check for Free Tier only
         if (userTier === 'free') {
             btn.innerText = 'Checking limits...';
             const totalSaved = await getSavedPosterCount(session.user.id);
             if (totalSaved >= 3) {
                 alert('You have reached the limit of 3 saved QR codes for the Free tier. Please upgrade to Pro for increased limits!');
                 showUpgradeModal('Saved QR Codes Limits');
+                btn.innerText = originalText;
+                btn.disabled = false;
                 return;
             }
+        }
 
-            const balanceInfo = await getTokenBalance(session.user.id);
-            if (balanceInfo.tokens < 2) {
-                alert(`⚠️ Insufficient tokens!\n\nYou need 2 tokens to download on the Free tier.\nYour balance: ${balanceInfo.tokens} tokens.\n\nFree plan gives you 3,000 tokens/month (100/day).\nUpgrade to Pro for 90,000/month!`);
-                showUpgradeModal('QR Code Download');
-                return;
+        // 2. Token Check & Deduction for all tiers
+        const tokensToDeduct = 2;
+        btn.innerText = 'Checking tokens...';
+        const balanceInfo = await getTokenBalance(session.user.id);
+        if (balanceInfo.tokens < tokensToDeduct) {
+            let limitMsg = '';
+            if (userTier === 'free') {
+                limitMsg = '\n\nFree plan gives you 3,000 tokens/month (100/day).\nUpgrade to Pro for 90,000/month!';
+            } else if (userTier === 'pro') {
+                limitMsg = '\n\nPro plan gives you 90,000 tokens/month (3,000/day).\nUpgrade to Enterprise for 5,00,000/month!';
+            } else {
+                limitMsg = '\n\nEnterprise plan gives you 5,00,000 tokens/month (16,667/day).';
             }
+            alert(`⚠️ Insufficient tokens!\n\nYou need ${tokensToDeduct} tokens to download this QR.\nYour balance: ${balanceInfo.tokens} tokens.${limitMsg}`);
+            showUpgradeModal('QR Code Download');
+            btn.innerText = originalText;
+            btn.disabled = false;
+            return;
+        }
 
-            btn.innerText = 'Processing tokens...';
-            const deductResult = await deductTokens(session.user.id, 2);
-            if (!deductResult.success) {
-                alert(`Token deduction failed: ${deductResult.error}`);
-                return;
-            }
-            if (typeof injectUnifiedDropdown === 'function') {
-                await injectUnifiedDropdown('.dashboard-nav');
-            }
+        btn.innerText = 'Processing tokens...';
+        const deductResult = await deductTokens(session.user.id, tokensToDeduct);
+        if (!deductResult.success) {
+            alert(`Token deduction failed: ${deductResult.error}`);
+            btn.innerText = originalText;
+            btn.disabled = false;
+            return;
+        }
+        if (typeof injectUnifiedDropdown === 'function') {
+            await injectUnifiedDropdown('.dashboard-nav');
         }
 
         btn.innerText = 'Rendering poster...';
@@ -1563,13 +1581,9 @@ document.getElementById('download-btn').addEventListener('click', async () => {
         } catch (canvasErr) {
             console.error('Canvas export failed:', canvasErr);
             alert('Could not export the poster image. If you uploaded a logo, try removing it and generate again.');
+            btn.innerText = originalText;
+            btn.disabled = false;
             return;
-        }
-
-        // Show unlimited toast for Pro/Enterprise
-        if (userTier !== 'free') {
-            const tierLabel = userTier === 'enterprise' ? '👑 Enterprise' : '⚡ Pro';
-            showUnlimitedDownloadToast(tierLabel);
         }
 
         let name = 'Link';
@@ -1582,7 +1596,7 @@ document.getElementById('download-btn').addEventListener('click', async () => {
 
         try {
             await ensureUserProfile(session);
-            const tokensSpent = userTier === 'free' ? 2 : 0;
+            const tokensSpent = tokensToDeduct;
 
             if (activeTab === 'wifi') {
                 const { error } = await supabaseClient.from('wifi_qrs').insert({
