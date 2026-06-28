@@ -1,5 +1,7 @@
 -- Plan ↔ tokens ↔ payments auto-sync (run in Supabase SQL Editor)
--- free = 20 tokens | pro = 50 tokens | enterprise = 500 tokens
+-- Monthly caps:  free = 3,000 | pro = 90,000 | enterprise = 5,00,000
+-- Daily drip:    free = 100   | pro = 3,000  | enterprise = 16,667
+-- Initial grant (on plan change) = first day's drip amount
 -- Requires: profiles.tier, user_tokens, payments, migrate-sync-tokens-profile.sql
 
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -22,10 +24,12 @@ RETURNS integer
 LANGUAGE sql
 IMMUTABLE
 AS $$
+    -- Returns the FIRST DAY drip amount (daily grant on plan activation)
+    -- Full monthly caps: free=3000, pro=90000, enterprise=500000
     SELECT CASE p_tier
-        WHEN 'pro' THEN 50
-        WHEN 'enterprise' THEN 500
-        ELSE 20
+        WHEN 'pro'        THEN 3000    -- 90,000 / 30 days
+        WHEN 'enterprise' THEN 16667   -- 5,00,000 / 30 days
+        ELSE 100                       -- 3,000 / 30 days (free)
     END;
 $$;
 

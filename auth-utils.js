@@ -17,6 +17,19 @@ async function ensureUserProfile(session) {
 
     await ensureUserTokens(session.user.id);
 
+    // 🪙 Claim today's daily token drip (silent background call — safe net if cron missed)
+    (async () => {
+        try {
+            const { data: dripResult } = await supabaseClient.rpc('claim_daily_drip');
+            if (dripResult?.success && dripResult?.granted > 0) {
+                // Show a brief toast so user sees their daily tokens
+                showDailyDripToast(dripResult.granted, dripResult.balance, dripResult.tier);
+            }
+        } catch (e) {
+            // Non-critical — silently ignore
+        }
+    })();
+
     // Attempt to capture user's current public IP
     (async () => {
         try {
@@ -190,7 +203,7 @@ async function syncTokensToProfile(userId, balance, totalSpent) {
     return { success: true, error: null };
 }
 
-async function ensureUserTokens(userId, startingBalance = 20) {
+async function ensureUserTokens(userId, startingBalance = 100) {
     try {
         const { data: profile } = await supabaseClient
             .from('profiles')
@@ -350,9 +363,9 @@ async function setUserTokenBalance(userId, newBalance) {
 }
 
 const PLAN_TIER_CONFIG = {
-    free: { tokens: 20, amount: 0, label: 'Free Plan' },
-    pro: { tokens: 50, amount: 799, label: 'Pro Subscription' },
-    enterprise: { tokens: 500, amount: 3999, label: 'Enterprise Subscription' }
+    free:       { tokens: 3000,   dailyDrip: 100,   amount: 0,    label: 'Free Plan' },
+    pro:        { tokens: 90000,  dailyDrip: 3000,  amount: 799,  label: 'Pro Subscription' },
+    enterprise: { tokens: 500000, dailyDrip: 16667, amount: 3999, label: 'Enterprise Subscription' }
 };
 
 function getPlanTokensForTier(tier) {
@@ -417,13 +430,21 @@ async function recordAdminTokenAdjustment(userId, adjustBy, note) {
     return { success: true, error: null };
 }
 
-function updateNavbarTokenBadge(balance) {
+function updateNavbarTokenBadge(balance, tier) {
     const badge = document.getElementById('navbar-token-badge');
     if (!badge) return;
     const countEl = badge.querySelector('.token-count');
-    if (countEl) countEl.textContent = balance;
-    // Add low-balance warning class
-    if (balance < 10) {
+    if (countEl) {
+        // Format large numbers nicely: 3000 → 3K, 90000 → 90K
+        if (balance >= 1000) {
+            countEl.textContent = (balance / 1000).toFixed(balance % 1000 === 0 ? 0 : 1) + 'K';
+        } else {
+            countEl.textContent = balance;
+        }
+    }
+    // Scale the low-balance warning based on tier
+    const lowThreshold = tier === 'enterprise' ? 5000 : tier === 'pro' ? 500 : 50;
+    if (balance < lowThreshold) {
         badge.classList.add('low-balance');
     } else {
         badge.classList.remove('low-balance');
@@ -800,5 +821,94 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startPresenceHeartbeat);
 } else {
     startPresenceHeartbeat();
+}
+
+// ─────────────────────────────────────────────────────────────
+// 🪙 DAILY DRIP TOAST — shows when tokens are granted on login
+// ─────────────────────────────────────────────────────────────
+function showDailyDripToast(granted, balance, tier) {
+    // Remove any existing drip toast
+    const old = document.getElementById('daily-drip-toast');
+    if (old) old.remove();
+
+    const tierColors = {
+        enterprise: { from: '#f59e0b', to: '#ef4444', icon: '👑' },
+        pro:        { from: '#818cf8', to: '#c084fc', icon: '⚡' },
+        free:       { from: '#34d399', to: '#22c55e', icon: '🪙' }
+    };
+    const t = tierColors[tier] || tierColors.free;
+
+    // Format numbers
+    const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K' : n;
+
+    const toast = document.createElement('div');
+    toast.id = 'daily-drip-toast';
+    toast.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-size:1.5rem;animation:dripBounce 0.6s ease;">${t.icon}</span>
+            <div>
+                <div style="font-weight:700;font-size:0.9rem;color:#fff;letter-spacing:0.3px;">
+                    Daily Tokens Received!
+                </div>
+                <div style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin-top:1px;">
+                    +${fmt(granted)} tokens added · Balance: <strong style="color:#fff">${fmt(balance)}</strong>
+                </div>
+            </div>
+        </div>
+        <button onclick="document.getElementById('daily-drip-toast').remove()"
+                style="background:none;border:none;color:rgba(255,255,255,0.6);cursor:pointer;font-size:1rem;padding:0 0 0 0.5rem;line-height:1;">✕</button>
+    `;
+
+    Object.assign(toast.style, {
+        position:        'fixed',
+        bottom:          '1.5rem',
+        right:           '1.5rem',
+        zIndex:          '99999',
+        display:         'flex',
+        alignItems:      'center',
+        justifyContent:  'space-between',
+        gap:             '1rem',
+        padding:         '0.85rem 1.1rem',
+        borderRadius:    '14px',
+        background:      `linear-gradient(135deg, ${t.from}22, ${t.to}22)`,
+        border:          `1px solid ${t.from}55`,
+        backdropFilter:  'blur(12px)',
+        boxShadow:       `0 8px 32px ${t.from}33, 0 2px 8px rgba(0,0,0,0.4)`,
+        minWidth:        '280px',
+        maxWidth:        '340px',
+        animation:       'dripSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards',
+        fontFamily:      "'Inter', sans-serif"
+    });
+
+    // Inject keyframes once
+    if (!document.getElementById('drip-toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'drip-toast-styles';
+        style.textContent = `
+            @keyframes dripSlideIn {
+                from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                to   { opacity: 1; transform: translateY(0)   scale(1);    }
+            }
+            @keyframes dripSlideOut {
+                from { opacity: 1; transform: translateY(0)   scale(1);    }
+                to   { opacity: 0; transform: translateY(20px) scale(0.95); }
+            }
+            @keyframes dripBounce {
+                0%,100% { transform: translateY(0); }
+                40%     { transform: translateY(-6px); }
+                70%     { transform: translateY(-3px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(toast);
+
+    // Auto-dismiss after 5s with slide-out animation
+    setTimeout(() => {
+        if (!toast.parentNode) return;
+        toast.style.animation = 'dripSlideOut 0.35s ease forwards';
+        setTimeout(() => toast.remove(), 350);
+    }, 5000);
 }
 

@@ -2,14 +2,14 @@
 
 -- 1. Ensure token columns exist on profiles
 ALTER TABLE public.profiles
-    ADD COLUMN IF NOT EXISTS tokens INTEGER NOT NULL DEFAULT 20;
+    ADD COLUMN IF NOT EXISTS tokens INTEGER NOT NULL DEFAULT 100;  -- Free tier: 100 tokens/day drip
 
 ALTER TABLE public.profiles
     ADD COLUMN IF NOT EXISTS total_tokens_used INTEGER NOT NULL DEFAULT 0;
 
 -- 2. Backfill user_tokens from profiles (if row missing)
 INSERT INTO public.user_tokens (user_id, balance, total_spent)
-SELECT p.id, COALESCE(p.tokens, 20), COALESCE(p.total_tokens_used, 0)
+SELECT p.id, COALESCE(p.tokens, 100), COALESCE(p.total_tokens_used, 0)
 FROM public.profiles p
 LEFT JOIN public.user_tokens ut ON ut.user_id = p.id
 WHERE ut.user_id IS NULL
@@ -29,7 +29,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS '
 BEGIN
     UPDATE public.profiles
     SET
@@ -38,7 +38,7 @@ BEGIN
     WHERE id = NEW.user_id;
     RETURN NEW;
 END;
-$$;
+';
 
 DROP TRIGGER IF EXISTS trg_sync_profile_tokens ON public.user_tokens;
 CREATE TRIGGER trg_sync_profile_tokens
@@ -52,26 +52,26 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS '
 BEGIN
     INSERT INTO public.profiles (id, full_name, email, role, tokens, total_tokens_used)
     VALUES (
         NEW.id,
-        NEW.raw_user_meta_data->>'full_name',
+        NEW.raw_user_meta_data->>''full_name'',
         NEW.email,
-        'user',
-        20,
+        ''user'',
+        100,
         0
     )
     ON CONFLICT (id) DO NOTHING;
 
     INSERT INTO public.user_tokens (user_id, balance, total_spent)
-    VALUES (NEW.id, 20, 0)
+    VALUES (NEW.id, 100, 0)
     ON CONFLICT (user_id) DO NOTHING;
 
     RETURN NEW;
 END;
-$$;
+';
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

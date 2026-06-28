@@ -340,7 +340,9 @@ function setupUpgradeModal() {
                         userTier = selectedTier;
                         updateUIForTier();
                         generatePreview();
-                        alert(`Upgraded to ${selectedTier === 'pro' ? 'Pro Plan' : 'Enterprise Plan'} successfully! You now have ${result.tokens} tokens.`);
+                        const monthlyTokens = selectedTier === 'pro' ? '90,000' : '5,00,000';
+                        const dailyTokens   = selectedTier === 'pro' ? '3,000'  : '16,667';
+                        alert(`🎉 Upgraded to ${selectedTier === 'pro' ? 'Pro' : 'Enterprise'} Plan!\n\n✅ Monthly cap: ${monthlyTokens} tokens\n⚡ Daily drip: ${dailyTokens} tokens/day at midnight\n🚀 Starting balance: ${result.tokens?.toLocaleString() || dailyTokens} tokens`);
                     } else {
                         const tokensToAdd = selectedPack === 'starter' ? 20 : 100;
                         const result = await processTokenPackPurchase(
@@ -1537,7 +1539,7 @@ document.getElementById('download-btn').addEventListener('click', async () => {
 
             const balanceInfo = await getTokenBalance(session.user.id);
             if (balanceInfo.tokens < 2) {
-                alert(`Insufficient tokens!\n\nYou need 2 tokens to download a QR poster on the Free tier. Your current balance is ${balanceInfo.tokens} tokens.`);
+                alert(`⚠️ Insufficient tokens!\n\nYou need 2 tokens to download on the Free tier.\nYour balance: ${balanceInfo.tokens} tokens.\n\nFree plan gives you 3,000 tokens/month (100/day).\nUpgrade to Pro for 90,000/month!`);
                 showUpgradeModal('QR Code Download');
                 return;
             }
@@ -1562,6 +1564,12 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             console.error('Canvas export failed:', canvasErr);
             alert('Could not export the poster image. If you uploaded a logo, try removing it and generate again.');
             return;
+        }
+
+        // Show unlimited toast for Pro/Enterprise
+        if (userTier !== 'free') {
+            const tierLabel = userTier === 'enterprise' ? '👑 Enterprise' : '⚡ Pro';
+            showUnlimitedDownloadToast(tierLabel);
         }
 
         let name = 'Link';
@@ -1618,3 +1626,65 @@ document.getElementById('download-btn').addEventListener('click', async () => {
 
 // Initial generation
 window.onload = generatePreview;
+
+// ─────────────────────────────────────────────────────────────
+// ✨ UNLIMITED DOWNLOAD TOAST — shown to Pro/Enterprise on each download
+// ─────────────────────────────────────────────────────────────
+function showUnlimitedDownloadToast(tierLabel) {
+    const old = document.getElementById('unlimited-dl-toast');
+    if (old) old.remove();
+
+    const isPro = tierLabel.includes('Pro');
+    const from  = isPro ? '#818cf8' : '#f59e0b';
+    const to    = isPro ? '#c084fc' : '#ef4444';
+
+    const toast = document.createElement('div');
+    toast.id = 'unlimited-dl-toast';
+    toast.innerHTML = `
+        <span style="font-size:1.3rem;">${isPro ? '⚡' : '👑'}</span>
+        <div>
+            <div style="font-weight:700;font-size:0.85rem;color:#fff;">
+                ${tierLabel} — Unlimited Download
+            </div>
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.7);margin-top:1px;">
+                No tokens deducted &nbsp;·&nbsp; Enjoy unlimited QR generation
+            </div>
+        </div>
+    `;
+
+    Object.assign(toast.style, {
+        position:       'fixed',
+        bottom:         '1.5rem',
+        left:           '50%',
+        transform:      'translateX(-50%) translateY(20px)',
+        zIndex:         '99999',
+        display:        'flex',
+        alignItems:     'center',
+        gap:            '0.75rem',
+        padding:        '0.75rem 1.2rem',
+        borderRadius:   '50px',
+        background:     `linear-gradient(135deg, ${from}33, ${to}22)`,
+        border:         `1px solid ${from}66`,
+        backdropFilter: 'blur(12px)',
+        boxShadow:      `0 6px 24px ${from}44`,
+        whiteSpace:     'nowrap',
+        opacity:        '0',
+        transition:     'opacity 0.3s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+        fontFamily:     "'Inter', sans-serif"
+    });
+
+    document.body.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.style.opacity    = '1';
+        toast.style.transform  = 'translateX(-50%) translateY(0)';
+    });
+
+    // Auto-dismiss after 3s
+    setTimeout(() => {
+        toast.style.opacity   = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}

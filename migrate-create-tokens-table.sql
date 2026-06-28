@@ -47,7 +47,7 @@ CREATE POLICY "Admins can update all user tokens" ON public.user_tokens
 
 -- 5. Update Auth Signup Trigger Function to auto-insert into user_tokens
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS '
 BEGIN
   INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
@@ -63,7 +63,7 @@ BEGIN
   
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+' LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 6. Reload schema cache
 NOTIFY pgrst, 'reload schema';
