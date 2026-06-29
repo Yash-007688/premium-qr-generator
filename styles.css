@@ -1154,20 +1154,86 @@ canvas:hover {
    PROFILE PAGE STYLING
    ======================================= */
 .profile-content {
-    display: grid;
-    grid-template-columns: 1fr 1.8fr;
-    gap: 2rem;
-    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 900px;
     margin: 2rem auto;
     padding: 0 2rem;
 }
 
+.profile-tabs-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    padding: 0.45rem;
+    backdrop-filter: blur(12px);
+}
+
+.profile-tab-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 0.65rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.profile-tab-btn:hover:not(.active) {
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--text-main);
+}
+
+.profile-tab-btn.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.15));
+    color: var(--text-main);
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.35);
+}
+
+.profile-tab-panels {
+    width: 100%;
+}
+
+.profile-tab-panel {
+    display: none;
+    animation: profileTabIn 0.25s ease;
+}
+
+.profile-tab-panel.active {
+    display: block;
+}
+
+.profile-tab-desc {
+    margin: -0.5rem 0 0.5rem;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+
+@keyframes profileTabIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 900px) {
     .profile-content {
-        grid-template-columns: 1fr;
         padding: 0 1rem;
         margin: 1rem auto;
-        gap: 1.5rem;
+        gap: 1rem;
+    }
+
+    .profile-tabs-nav {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-tab-btn {
+        text-align: center;
     }
     
     .profile-card {
@@ -2600,6 +2666,16 @@ input:checked + .theme-slider:before {
     background: rgba(255, 255, 255, 0.8);
     border-color: #e2e8f0;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .profile-tabs-nav {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .profile-tab-btn.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.08));
+    color: #312e81;
 }
 
 /* Admin table override for light theme (replaces .admin-table selectors) */

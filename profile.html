@@ -22,98 +22,108 @@
     <nav class="dashboard-nav">
         <div class="logo"><img src="logo.png" class="site-logo" alt="QR Web logo"><span>✨ QR Web Profile</span></div>
         <div class="nav-links"></div>
-        <!-- Unified Dropdown will be injected here dynamically -->
     </nav>
 
-    <!-- Main Profile Content Layout -->
     <div class="profile-content">
-        
-        <!-- Left Section: Profile Settings & Info Card -->
-        <div class="profile-card">
-            <h3>👤 Account Settings</h3>
-            
-            <div class="profile-avatar-large" id="profile-avatar-icon">
-                U
-            </div>
-            
-            <form id="profile-form" class="auth-form" style="padding:0; margin:0; box-shadow:none; background:transparent;">
-                <div class="profile-info-group">
-                    <label class="profile-info-label" for="profile-name-input">Full Name</label>
-                    <input type="text" id="profile-name-input" class="form-input" placeholder="Enter your full name" required>
-                </div>
-                
-                <div class="profile-info-group" style="margin-top: 1rem;">
-                    <label class="profile-info-label">Email Address</label>
-                    <div class="profile-info-value-static" id="profile-email-static">loading...</div>
-                </div>
-                
-                <div class="profile-info-group" style="margin-top: 1rem;">
-                    <label class="profile-info-label">Account Role</label>
-                    <div class="profile-info-value-static" style="font-weight: 600; text-transform: uppercase;" id="profile-role-static">loading...</div>
-                </div>
+        <nav class="profile-tabs-nav" aria-label="Profile sections">
+            <button type="button" class="profile-tab-btn active" data-profile-tab="profile">👤 Profile</button>
+            <button type="button" class="profile-tab-btn" data-profile-tab="token">🪙 Tokens</button>
+            <button type="button" class="profile-tab-btn" data-profile-tab="downloads">⬇️ Downloads</button>
+        </nav>
 
-                <div class="profile-info-group" style="margin-top: 1rem;">
-                    <label class="profile-info-label">Membership Tier</label>
-                    <div class="profile-info-value-static" style="font-weight: 600; text-transform: uppercase; color: #fb923c;" id="profile-tier-static">loading...</div>
-                </div>
+        <div class="profile-tab-panels">
 
-                <div class="profile-info-group" style="margin-top: 1rem; margin-bottom: 1.5rem;">
-                    <label class="profile-info-label">Member Since</label>
-                    <div class="profile-info-value-static" id="profile-joined-static">loading...</div>
-                </div>
+            <!-- Profile Tab -->
+            <section id="profile-tab-profile" class="profile-tab-panel active">
+                <div class="profile-card">
+                    <h3>👤 Account Settings</h3>
 
-                <div class="profile-info-group" style="margin-top: 0.5rem; margin-bottom: 1.5rem;">
-                    <label class="profile-info-label">Status / Last Seen</label>
-                    <div class="profile-info-value-static" id="profile-status-static">loading...</div>
+                    <div class="profile-avatar-large" id="profile-avatar-icon">U</div>
+
+                    <form id="profile-form" class="auth-form" style="padding:0; margin:0; box-shadow:none; background:transparent;">
+                        <div class="profile-info-group">
+                            <label class="profile-info-label" for="profile-name-input">Full Name</label>
+                            <input type="text" id="profile-name-input" class="form-input" placeholder="Enter your full name" required>
+                        </div>
+
+                        <div class="profile-info-group" style="margin-top: 1rem;">
+                            <label class="profile-info-label">Email Address</label>
+                            <div class="profile-info-value-static" id="profile-email-static">loading...</div>
+                        </div>
+
+                        <div class="profile-info-group" style="margin-top: 1rem;">
+                            <label class="profile-info-label">Account Role</label>
+                            <div class="profile-info-value-static" style="font-weight: 600; text-transform: uppercase;" id="profile-role-static">loading...</div>
+                        </div>
+
+                        <div class="profile-info-group" style="margin-top: 1rem;">
+                            <label class="profile-info-label">Membership Tier</label>
+                            <div class="profile-info-value-static" style="font-weight: 600; text-transform: uppercase; color: #fb923c;" id="profile-tier-static">loading...</div>
+                        </div>
+
+                        <div class="profile-info-group" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+                            <label class="profile-info-label">Member Since</label>
+                            <div class="profile-info-value-static" id="profile-joined-static">loading...</div>
+                        </div>
+
+                        <div class="profile-info-group" style="margin-top: 0.5rem; margin-bottom: 1.5rem;">
+                            <label class="profile-info-label">Status / Last Seen</label>
+                            <div class="profile-info-value-static" id="profile-status-static">loading...</div>
+                        </div>
+
+                        <button type="submit" id="update-profile-btn" class="form-btn">
+                            Update Profile Details
+                        </button>
+                    </form>
                 </div>
-                
-                <button type="submit" id="update-profile-btn" class="form-btn">
-                    Update Profile Details
-                </button>
-            </form>
+            </section>
+
+            <!-- Token Tab -->
+            <section id="profile-tab-token" class="profile-tab-panel">
+                <div class="profile-card token-balance-card">
+                    <h3>🪙 Token Balance</h3>
+
+                    <div class="token-balance-display">
+                        <div class="token-big-number" id="profile-token-balance">—</div>
+                        <div class="token-label">Tokens Available</div>
+                        <div class="token-daily-hint" id="profile-daily-tokens">— tokens / day</div>
+                    </div>
+
+                    <div class="token-used-row">
+                        <span>Today's tokens left:</span>
+                        <strong id="profile-daily-left">—</strong>
+                    </div>
+
+                    <div class="token-used-row">
+                        <span>Today's tokens used:</span>
+                        <strong id="profile-daily-used">—</strong>
+                    </div>
+
+                    <div class="token-used-row" style="margin-bottom: 0;">
+                        <span>Lifetime tokens used:</span>
+                        <strong id="profile-tokens-used">—</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Downloads Tab -->
+            <section id="profile-tab-downloads" class="profile-tab-panel">
+                <div class="profile-card">
+                    <h3>⬇️ My Downloaded QR Posters</h3>
+                    <p class="profile-tab-desc">All your saved Wi-Fi, Hotspot and Link QR posters appear here.</p>
+
+                    <div id="history-loading" class="empty-state">Loading your posters history...</div>
+                    <div id="history-empty" class="empty-state" style="display: none;">You haven't downloaded any QR posters yet. Go to the Creator Studio to make one!</div>
+
+                    <div class="history-cards-container" id="history-grid" style="display: none;">
+                        <!-- Cards loaded by profile.js -->
+                    </div>
+                </div>
+            </section>
+
         </div>
-
-        <!-- Token Balance Card -->
-        <div class="profile-card token-balance-card">
-            <h3>🪙 Token Balance</h3>
-
-            <div class="token-balance-display">
-                <div class="token-big-number" id="profile-token-balance">—</div>
-                <div class="token-label">Tokens Available</div>
-                <div class="token-daily-hint" id="profile-daily-tokens">— tokens / day</div>
-            </div>
-
-            <div class="token-used-row">
-                <span>Today's tokens left:</span>
-                <strong id="profile-daily-left">—</strong>
-            </div>
-
-            <div class="token-used-row">
-                <span>Today's tokens used:</span>
-                <strong id="profile-daily-used">—</strong>
-            </div>
-
-            <div class="token-used-row" style="margin-bottom: 0;">
-                <span>Lifetime tokens used:</span>
-                <strong id="profile-tokens-used">—</strong>
-            </div>
-        </div>
-
-        <!-- Right Section: Personal Posters History -->
-        <div class="profile-card">
-            <h3>🎨 My Saved QR Posters</h3>
-            
-            <div id="history-loading" class="empty-state">Loading your posters history...</div>
-            <div id="history-empty" class="empty-state" style="display: none;">You haven't generated any QR posters yet. Go to the Creator Studio to make one!</div>
-            
-            <div class="history-cards-container" id="history-grid" style="display: none;">
-                <!-- Cards will be dynamically loaded here by profile.js -->
-            </div>
-        </div>
-        
     </div>
 
-    <!-- Script imports in standard execution sequence -->
     <script src="env.config.example.js"></script>
     <script src="env.config.js"></script>
     <script src="supabase.js"></script>

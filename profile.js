@@ -23,7 +23,35 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // Bind Update details form submission
     document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
+
+    setupProfileTabs();
 });
+
+function setupProfileTabs() {
+    const tabButtons = document.querySelectorAll('.profile-tab-btn');
+    const panels = document.querySelectorAll('.profile-tab-panel');
+
+    function switchTab(tabId) {
+        tabButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.profileTab === tabId);
+        });
+        panels.forEach(panel => {
+            panel.classList.toggle('active', panel.id === `profile-tab-${tabId}`);
+        });
+        if (history.replaceState) {
+            history.replaceState(null, '', `#${tabId}`);
+        }
+    }
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.profileTab));
+    });
+
+    const hash = window.location.hash.replace('#', '');
+    if (hash && ['profile', 'token', 'downloads'].includes(hash)) {
+        switchTab(hash);
+    }
+}
 
 // Fetch Profile from DB
 async function loadProfileData() {
