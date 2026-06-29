@@ -340,8 +340,8 @@ function setupUpgradeModal() {
                         userTier = selectedTier;
                         updateUIForTier();
                         generatePreview();
-                        const monthlyTokens = selectedTier === 'pro' ? '5,000' : '8,000';
-                        const dailyTokens   = selectedTier === 'pro' ? '167' : '267';
+                        const monthlyTokens = selectedTier === 'pro' ? '9,000' : '15,000';
+                        const dailyTokens   = selectedTier === 'pro' ? '300' : '500';
                         alert(`🎉 Upgraded to ${selectedTier === 'pro' ? 'Pro' : 'Enterprise'} Plan!\n\n✅ Monthly cap: ${monthlyTokens} tokens\n⚡ Daily drip: ${dailyTokens} tokens/day\n🚀 Starting balance: ${result.tokens?.toLocaleString() || dailyTokens} tokens`);
                     } else {
                         const tokensToAdd = selectedPack === 'starter' ? 20 : 100;
@@ -1595,11 +1595,11 @@ function calculateQRTokenCost() {
         if (balanceInfo.tokens < tokensToDeduct) {
             let limitMsg = '';
             if (userTier === 'free') {
-                limitMsg = '\n\nFree plan gives you 3,000 tokens/month (100/day).\nUpgrade to Pro for 5,000/month!';
+                limitMsg = '\n\nFree plan: 100 tokens/day (3,000/month).\nUpgrade to Pro for 300/day!';
             } else if (userTier === 'pro') {
-                limitMsg = '\n\nPro plan gives you 5,000 tokens/month (167/day).\nUpgrade to Enterprise for 8,000/month!';
+                limitMsg = '\n\nPro plan: 300 tokens/day (9,000/month).\nUpgrade to Enterprise for 500/day!';
             } else {
-                limitMsg = '\n\nEnterprise plan gives you 8,000 tokens/month (267/day).';
+                limitMsg = '\n\nEnterprise plan: 500 tokens/day (15,000/month).';
             }
             alert(`⚠️ Insufficient tokens!\n\nThis QR configuration requires ${tokensToDeduct} tokens.\nYour balance: ${balanceInfo.tokens} tokens.\n\nCost Breakdown:\n${costInfo.details}${limitMsg}`);
             showUpgradeModal('QR Code Download');

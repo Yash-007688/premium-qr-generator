@@ -107,10 +107,14 @@ async function loadProfileData() {
             const tokenBalEl = document.getElementById('profile-token-balance');
             const tokenUsedEl = document.getElementById('profile-tokens-used');
             const dailyTokensEl = document.getElementById('profile-daily-tokens');
+            const dailyLeftEl = document.getElementById('profile-daily-left');
+            const dailyUsedEl = document.getElementById('profile-daily-used');
             
             const tokenBalanceInfo = await getTokenBalance(currentUserId);
             if (tokenBalEl) tokenBalEl.innerText = tokenBalanceInfo.tokens;
             if (tokenUsedEl) tokenUsedEl.innerText = tokenBalanceInfo.total_tokens_used;
+            if (dailyLeftEl) dailyLeftEl.innerText = tokenBalanceInfo.daily_tokens_left;
+            if (dailyUsedEl) dailyUsedEl.innerText = tokenBalanceInfo.daily_tokens_used;
             if (dailyTokensEl) {
                 const daily = getPlanDailyDripForTier(tierVal);
                 const monthly = getPlanMonthlyCapForTier(tierVal);

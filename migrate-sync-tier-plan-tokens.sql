@@ -1,6 +1,6 @@
 -- Plan ↔ tokens ↔ payments auto-sync (run in Supabase SQL Editor)
--- Monthly caps:  free = 3,000 | pro = 5,000 | enterprise = 8,000
--- Daily drip:    auto = ceil(monthly / 30)
+-- Monthly caps:  free = 3,000 | pro = 9,000 | enterprise = 15,000
+-- Daily drip:    free = 100   | pro = 300     | enterprise = 500
 -- Initial grant (on plan change) = first day's drip amount
 -- Requires: profiles.tier, user_tokens, payments, migrate-sync-tokens-profile.sql
 
@@ -24,11 +24,11 @@ RETURNS integer
 LANGUAGE sql
 IMMUTABLE
 AS $$
-    SELECT (CASE p_tier
-        WHEN 'pro'        THEN 5000
-        WHEN 'enterprise' THEN 8000
-        ELSE 3000
-    END + 29) / 30;
+    SELECT CASE p_tier
+        WHEN 'pro'        THEN 300
+        WHEN 'enterprise' THEN 500
+        ELSE 100
+    END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_tier_plan_amount(p_tier text)

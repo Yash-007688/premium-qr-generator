@@ -187,13 +187,17 @@ async function requireAdmin() {
 }
 
 // === TOKEN SYSTEM HELPERS ===
-async function syncTokensToProfile(userId, balance, totalSpent) {
+async function syncTokensToProfile(userId, balance, totalSpent, dailyLeft, dailyUsed) {
+    const payload = {
+        tokens: balance,
+        total_tokens_used: totalSpent
+    };
+    if (dailyLeft != null) payload.daily_tokens_left = dailyLeft;
+    if (dailyUsed != null) payload.daily_tokens_used = dailyUsed;
+
     const { error } = await supabaseClient
         .from('profiles')
-        .update({
-            tokens: balance,
-            total_tokens_used: totalSpent
-        })
+        .update(payload)
         .eq('id', userId);
 
     if (error) {
@@ -203,35 +207,53 @@ async function syncTokensToProfile(userId, balance, totalSpent) {
     return { success: true, error: null };
 }
 
+async function refreshDailyTokenCounters(userId, tier) {
+    try {
+        await supabaseClient.rpc('claim_daily_drip');
+    } catch (e) {
+        console.warn('claim_daily_drip:', e?.message);
+    }
+}
+
 async function ensureUserTokens(userId, startingBalance = 100) {
     try {
         const { data: profile } = await supabaseClient
             .from('profiles')
-            .select('tokens, total_tokens_used')
+            .select('tokens, total_tokens_used, daily_tokens_left, daily_tokens_used')
             .eq('id', userId)
             .maybeSingle();
 
         const { data: tokenRow } = await supabaseClient
             .from('user_tokens')
-            .select('balance, total_spent')
+            .select('balance, total_spent, daily_tokens_left, daily_tokens_used')
             .eq('user_id', userId)
             .maybeSingle();
 
         if (tokenRow) {
             const balance = tokenRow.balance ?? 0;
             const spent = tokenRow.total_spent ?? 0;
-            await syncTokensToProfile(userId, balance, spent);
+            await syncTokensToProfile(
+                userId,
+                balance,
+                spent,
+                tokenRow.daily_tokens_left,
+                tokenRow.daily_tokens_used
+            );
             return { success: true, balance, totalSpent: spent };
         }
 
         const balance = profile?.tokens ?? startingBalance;
         const spent = profile?.total_tokens_used ?? 0;
+        const dailyLeft = profile?.daily_tokens_left ?? getPlanDailyDripForTier('free');
+        const dailyUsed = profile?.daily_tokens_used ?? 0;
 
         const { error } = await supabaseClient.from('user_tokens').upsert(
             {
                 user_id: userId,
                 balance,
-                total_spent: spent
+                total_spent: spent,
+                daily_tokens_left: dailyLeft,
+                daily_tokens_used: dailyUsed
             },
             { onConflict: 'user_id' }
         );
@@ -241,7 +263,7 @@ async function ensureUserTokens(userId, startingBalance = 100) {
             return { success: false, error: error.message };
         }
 
-        await syncTokensToProfile(userId, balance, spent);
+        await syncTokensToProfile(userId, balance, spent, dailyLeft, dailyUsed);
         return { success: true, balance, totalSpent: spent };
     } catch (e) {
         console.error('ensureUserTokens failed:', e);
@@ -252,27 +274,58 @@ async function ensureUserTokens(userId, startingBalance = 100) {
 async function getTokenBalance(userId) {
     try {
         await ensureUserTokens(userId);
+        await refreshDailyTokenCounters(userId);
         const { data, error } = await supabaseClient
             .from('user_tokens')
-            .select('balance, total_spent')
+            .select('balance, total_spent, daily_tokens_left, daily_tokens_used')
             .eq('user_id', userId)
             .maybeSingle();
-        if (error || !data) return { tokens: 0, total_tokens_used: 0 };
-        return { tokens: data.balance ?? 0, total_tokens_used: data.total_spent ?? 0 };
+        if (error || !data) {
+            return { tokens: 0, total_tokens_used: 0, daily_tokens_left: 0, daily_tokens_used: 0 };
+        }
+        return {
+            tokens: data.balance ?? 0,
+            total_tokens_used: data.total_spent ?? 0,
+            daily_tokens_left: data.daily_tokens_left ?? 0,
+            daily_tokens_used: data.daily_tokens_used ?? 0
+        };
     } catch (e) {
         console.error('Failed to fetch token balance:', e);
-        return { tokens: 0, total_tokens_used: 0 };
+        return { tokens: 0, total_tokens_used: 0, daily_tokens_left: 0, daily_tokens_used: 0 };
     }
 }
 
 async function deductTokens(userId, amount) {
     try {
         await ensureUserTokens(userId);
-        const { tokens: currentBalance } = await getTokenBalance(userId);
+        await refreshDailyTokenCounters(userId);
+
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('tier')
+            .eq('id', userId)
+            .maybeSingle();
+        const tier = profile?.tier || 'free';
+
+        const balanceInfo = await getTokenBalance(userId);
+        const currentBalance = balanceInfo.tokens;
+        const dailyLeft = balanceInfo.daily_tokens_left ?? 0;
+        const dailyUsed = balanceInfo.daily_tokens_used ?? 0;
+
+        if (dailyLeft < amount) {
+            return {
+                success: false,
+                newBalance: currentBalance,
+                error: `Daily limit reached. You have ${dailyLeft} tokens left today (${getPlanDailyDripForTier(tier)}/day on ${tier} plan).`
+            };
+        }
         if (currentBalance < amount) {
             return { success: false, newBalance: currentBalance, error: 'Insufficient tokens' };
         }
+
         const newBalance = currentBalance - amount;
+        const newDailyLeft = Math.max(0, dailyLeft - amount);
+        const newDailyUsed = dailyUsed + amount;
         const { data: userTokenRow } = await supabaseClient
             .from('user_tokens')
             .select('total_spent')
@@ -282,17 +335,29 @@ async function deductTokens(userId, amount) {
         const { error } = await supabaseClient
             .from('user_tokens')
             .upsert(
-                { user_id: userId, balance: newBalance, total_spent: currentUsed + amount },
+                {
+                    user_id: userId,
+                    balance: newBalance,
+                    total_spent: currentUsed + amount,
+                    daily_tokens_left: newDailyLeft,
+                    daily_tokens_used: newDailyUsed
+                },
                 { onConflict: 'user_id' }
             );
         if (error) return { success: false, newBalance: currentBalance, error: error.message };
 
-        await syncTokensToProfile(userId, newBalance, currentUsed + amount);
+        await syncTokensToProfile(userId, newBalance, currentUsed + amount, newDailyLeft, newDailyUsed);
 
         if (typeof updateNavbarTokenBadge === 'function') {
             updateNavbarTokenBadge(newBalance);
         }
-        return { success: true, newBalance, error: null };
+        return {
+            success: true,
+            newBalance,
+            daily_tokens_left: newDailyLeft,
+            daily_tokens_used: newDailyUsed,
+            error: null
+        };
     } catch (e) {
         console.error('Failed to deduct tokens:', e);
         return { success: false, newBalance: 0, error: e.message };
@@ -306,7 +371,7 @@ async function addTokens(userId, amount) {
         const newBalance = currentBalance + amount;
         const { data: userTokenRow } = await supabaseClient
             .from('user_tokens')
-            .select('total_spent')
+            .select('total_spent, daily_tokens_left, daily_tokens_used')
             .eq('user_id', userId)
             .maybeSingle();
         const { error } = await supabaseClient
@@ -315,14 +380,22 @@ async function addTokens(userId, amount) {
                 {
                     user_id: userId,
                     balance: newBalance,
-                    total_spent: userTokenRow?.total_spent ?? 0
+                    total_spent: userTokenRow?.total_spent ?? 0,
+                    daily_tokens_left: userTokenRow?.daily_tokens_left,
+                    daily_tokens_used: userTokenRow?.daily_tokens_used
                 },
                 { onConflict: 'user_id' }
             );
         if (error) return { success: false, newBalance: currentBalance, error: error.message };
 
         const totalSpent = userTokenRow?.total_spent ?? 0;
-        await syncTokensToProfile(userId, newBalance, totalSpent);
+        await syncTokensToProfile(
+            userId,
+            newBalance,
+            totalSpent,
+            userTokenRow?.daily_tokens_left,
+            userTokenRow?.daily_tokens_used
+        );
 
         if (typeof updateNavbarTokenBadge === 'function') {
             updateNavbarTokenBadge(newBalance);
@@ -341,7 +414,7 @@ async function setUserTokenBalance(userId, newBalance) {
 
         const { data: tokenRow } = await supabaseClient
             .from('user_tokens')
-            .select('total_spent')
+            .select('total_spent, daily_tokens_left, daily_tokens_used')
             .eq('user_id', userId)
             .maybeSingle();
         const totalSpent = tokenRow?.total_spent ?? 0;
@@ -349,12 +422,24 @@ async function setUserTokenBalance(userId, newBalance) {
         const { error } = await supabaseClient
             .from('user_tokens')
             .upsert(
-                { user_id: userId, balance, total_spent: totalSpent },
+                {
+                    user_id: userId,
+                    balance,
+                    total_spent: totalSpent,
+                    daily_tokens_left: tokenRow?.daily_tokens_left,
+                    daily_tokens_used: tokenRow?.daily_tokens_used
+                },
                 { onConflict: 'user_id' }
             );
         if (error) return { success: false, newBalance: balance, error: error.message };
 
-        await syncTokensToProfile(userId, balance, totalSpent);
+        await syncTokensToProfile(
+            userId,
+            balance,
+            totalSpent,
+            tokenRow?.daily_tokens_left,
+            tokenRow?.daily_tokens_used
+        );
         return { success: true, newBalance: balance, totalSpent, error: null };
     } catch (e) {
         console.error('Failed to set token balance:', e);
@@ -363,9 +448,9 @@ async function setUserTokenBalance(userId, newBalance) {
 }
 
 const PLAN_TIER_CONFIG = {
-    free:       { tokens: 3000, amount: 0,    label: 'Free Plan' },
-    pro:        { tokens: 5000, amount: 799,  label: 'Pro Subscription' },
-    enterprise: { tokens: 8000, amount: 3999, label: 'Enterprise Subscription' }
+    free:       { dailyDrip: 100, tokens: 3000,  amount: 0,    label: 'Free Plan' },
+    pro:        { dailyDrip: 300, tokens: 9000,  amount: 799,  label: 'Pro Subscription' },
+    enterprise: { dailyDrip: 500, tokens: 15000, amount: 3999, label: 'Enterprise Subscription' }
 };
 
 function getPlanTokensForTier(tier) {
@@ -377,7 +462,7 @@ function getPlanMonthlyCapForTier(tier) {
 }
 
 function getPlanDailyDripForTier(tier) {
-    return Math.ceil(getPlanMonthlyCapForTier(tier) / 30);
+    return PLAN_TIER_CONFIG[tier]?.dailyDrip ?? PLAN_TIER_CONFIG.free.dailyDrip;
 }
 
 async function applyUserTierPlan(userId, tier, options = {}) {
