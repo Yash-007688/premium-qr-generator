@@ -8,8 +8,8 @@ LANGUAGE sql
 IMMUTABLE
 AS '
     SELECT CASE p_tier
-        WHEN ''pro''        THEN 90000
-        WHEN ''enterprise'' THEN 500000
+        WHEN ''pro''        THEN 5000
+        WHEN ''enterprise'' THEN 8000
         ELSE 3000
     END;
 ';
@@ -19,11 +19,7 @@ RETURNS integer
 LANGUAGE sql
 IMMUTABLE
 AS '
-    SELECT CASE p_tier
-        WHEN ''pro''        THEN 3000
-        WHEN ''enterprise'' THEN 16667
-        ELSE 100
-    END;
+    SELECT (public.get_tier_monthly_cap(p_tier) + 29) / 30;
 ';
 
 CREATE OR REPLACE FUNCTION public.get_tier_token_grant(p_tier text)
@@ -31,11 +27,7 @@ RETURNS integer
 LANGUAGE sql
 IMMUTABLE
 AS '
-    SELECT CASE p_tier
-        WHEN ''pro''        THEN 3000
-        WHEN ''enterprise'' THEN 16667
-        ELSE 100
-    END;
+    SELECT public.get_tier_daily_drip(p_tier);
 ';
 
 CREATE OR REPLACE FUNCTION public.apply_daily_token_drip(p_user_id uuid)

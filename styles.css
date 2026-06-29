@@ -3585,6 +3585,14 @@ input:checked + .theme-slider:before {
     margin-top: 0.4rem;
 }
 
+.token-daily-hint {
+    font-size: 0.82rem;
+    color: #a5b4fc;
+    font-weight: 600;
+    margin-top: 0.55rem;
+    letter-spacing: 0.2px;
+}
+
 .token-used-row {
     display: flex;
     justify-content: space-between;

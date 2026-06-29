@@ -66,6 +66,12 @@ async function loadProfileData() {
                     else if (newTier === 'enterprise') tierEl.innerHTML = 'Enterprise 🏆';
                     else tierEl.innerHTML = 'Free';
                 }
+                const dailyTokensEl = document.getElementById('profile-daily-tokens');
+                if (dailyTokensEl) {
+                    const daily = getPlanDailyDripForTier(newTier);
+                    const monthly = getPlanMonthlyCapForTier(newTier);
+                    dailyTokensEl.innerText = `${daily.toLocaleString()} tokens / day · ${monthly.toLocaleString()} / month cap`;
+                }
             });
 
             // Set Avatar image or letter
@@ -100,10 +106,16 @@ async function loadProfileData() {
             // Token Balance Display
             const tokenBalEl = document.getElementById('profile-token-balance');
             const tokenUsedEl = document.getElementById('profile-tokens-used');
+            const dailyTokensEl = document.getElementById('profile-daily-tokens');
             
             const tokenBalanceInfo = await getTokenBalance(currentUserId);
             if (tokenBalEl) tokenBalEl.innerText = tokenBalanceInfo.tokens;
             if (tokenUsedEl) tokenUsedEl.innerText = tokenBalanceInfo.total_tokens_used;
+            if (dailyTokensEl) {
+                const daily = getPlanDailyDripForTier(tierVal);
+                const monthly = getPlanMonthlyCapForTier(tierVal);
+                dailyTokensEl.innerText = `${daily.toLocaleString()} tokens / day · ${monthly.toLocaleString()} / month cap`;
+            }
         }
     } catch (e) {
         console.error("Failed to load user profile:", e);

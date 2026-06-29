@@ -363,13 +363,21 @@ async function setUserTokenBalance(userId, newBalance) {
 }
 
 const PLAN_TIER_CONFIG = {
-    free:       { tokens: 3000,   dailyDrip: 100,   amount: 0,    label: 'Free Plan' },
-    pro:        { tokens: 90000,  dailyDrip: 3000,  amount: 799,  label: 'Pro Subscription' },
-    enterprise: { tokens: 500000, dailyDrip: 16667, amount: 3999, label: 'Enterprise Subscription' }
+    free:       { tokens: 3000, amount: 0,    label: 'Free Plan' },
+    pro:        { tokens: 5000, amount: 799,  label: 'Pro Subscription' },
+    enterprise: { tokens: 8000, amount: 3999, label: 'Enterprise Subscription' }
 };
 
 function getPlanTokensForTier(tier) {
     return PLAN_TIER_CONFIG[tier]?.tokens ?? PLAN_TIER_CONFIG.free.tokens;
+}
+
+function getPlanMonthlyCapForTier(tier) {
+    return PLAN_TIER_CONFIG[tier]?.tokens ?? PLAN_TIER_CONFIG.free.tokens;
+}
+
+function getPlanDailyDripForTier(tier) {
+    return Math.ceil(getPlanMonthlyCapForTier(tier) / 30);
 }
 
 async function applyUserTierPlan(userId, tier, options = {}) {
@@ -443,7 +451,7 @@ function updateNavbarTokenBadge(balance, tier) {
         }
     }
     // Scale the low-balance warning based on tier
-    const lowThreshold = tier === 'enterprise' ? 5000 : tier === 'pro' ? 500 : 50;
+    const lowThreshold = tier === 'enterprise' ? 50 : tier === 'pro' ? 30 : 50;
     if (balance < lowThreshold) {
         badge.classList.add('low-balance');
     } else {
