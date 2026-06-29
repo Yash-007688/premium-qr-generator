@@ -1,4 +1,5 @@
--- Run in Supabase SQL Editor
+-- Fix payments table: add missing columns (run in Supabase SQL Editor)
+-- Fixes: column "razorpay_payment_id" of relation "payments" does not exist
 
 CREATE TABLE IF NOT EXISTS public.payments (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -9,23 +10,29 @@ CREATE TABLE IF NOT EXISTS public.payments (
     payment_gateway TEXT NOT NULL DEFAULT 'razorpay',
     razorpay_payment_id TEXT,
     razorpay_order_id TEXT,
-    status TEXT NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'success', 'failed', 'refunded')),
+    status TEXT NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Patch older payments tables missing Razorpay / status columns
+-- Add any column missing on an older payments / ex-transactions table
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS plan_name TEXT;
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS tokens_purchased INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS amount NUMERIC(10, 2) NOT NULL DEFAULT 0;
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS payment_gateway TEXT NOT NULL DEFAULT 'razorpay';
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT;
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT;
-ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'success';
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
 
+-- Ensure status check constraint exists
+ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_status_check;
+ALTER TABLE public.payments
+    ADD CONSTRAINT payments_status_check
+    CHECK (status IN ('pending', 'success', 'failed', 'refunded'));
+
+-- RLS + admin policy (needed for admin plan change + refunds)
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -53,17 +60,5 @@ CREATE POLICY "Authenticated users can read payments" ON public.payments
 DROP POLICY IF EXISTS "Admins can manage all payments" ON public.payments;
 CREATE POLICY "Admins can manage all payments" ON public.payments
     FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
-
-DROP POLICY IF EXISTS "Users can insert their own tokens row" ON public.user_tokens;
-CREATE POLICY "Users can insert their own tokens row" ON public.user_tokens
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Backfill user_tokens for existing profiles missing a row
-INSERT INTO public.user_tokens (user_id, balance, total_spent)
-SELECT p.id, 20, 0
-FROM public.profiles p
-LEFT JOIN public.user_tokens ut ON ut.user_id = p.id
-WHERE ut.user_id IS NULL
-ON CONFLICT (user_id) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';

@@ -632,7 +632,7 @@ window.deleteLinkQR = async function(qrId) {
 function renderPaymentTable(data) {
     const tbody = document.getElementById('payment-table-body');
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No payment transactions found. (Run payments table SQL first)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No payments found. (Run migrate-create-payments-table.sql in Supabase)</td></tr>';
         return;
     }
 
