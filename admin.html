@@ -36,180 +36,215 @@
             <button id="refresh-btn" class="action-btn">Refresh Data</button>
         </div>
 
-        <!-- 📊 SYSTEM ANALYTICS SECTION -->
-        <div class="analytics-section">
-            <h3>📊 Analytics Overview</h3>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-icon">👥</span>
-                    <div class="stat-info">
-                        <span class="stat-value" id="stat-total-users">0</span>
-                        <span class="stat-label">Total Users</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-icon">📶</span>
-                    <div class="stat-info">
-                        <span class="stat-value" id="stat-wifi-qrs">0</span>
-                        <span class="stat-label">Wi-Fi QRs</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-icon">📱</span>
-                    <div class="stat-info">
-                        <span class="stat-value" id="stat-hotspot-qrs">0</span>
-                        <span class="stat-label">Hotspot QRs</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-icon">🔗</span>
-                    <div class="stat-info">
-                        <span class="stat-value" id="stat-link-qrs">0</span>
-                        <span class="stat-label">Link QRs</span>
-                    </div>
-                </div>
-                <div class="stat-card" style="border-color: rgba(251,146,60,0.3); background: rgba(251,146,60,0.05);">
-                    <span class="stat-icon">🪙</span>
-                    <div class="stat-info">
-                        <span class="stat-value" id="stat-total-tokens" style="color:#fb923c;">0</span>
-                        <span class="stat-label">Tokens Issued</span>
-                    </div>
-                </div>
-                <div class="stat-card" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05);">
-                    <span class="stat-icon">💰</span>
-                    <div class="stat-info">
-                        <span class="stat-value" id="stat-total-revenue" style="color:#4ade80;">₹0</span>
-                        <span class="stat-label">Total Revenue</span>
-                    </div>
-                </div>
-            </div>
+        <!-- 🗂️ ADMIN TABS NAV -->
+        <div class="admin-tabs-nav">
+            <button class="admin-tab-btn active" data-tab="analytics" id="tab-analytics">
+                <span class="admin-tab-icon">📊</span>
+                <span class="admin-tab-label">Analytics</span>
+            </button>
+            <button class="admin-tab-btn" data-tab="users" id="tab-users">
+                <span class="admin-tab-icon">👥</span>
+                <span class="admin-tab-label">Users</span>
+            </button>
+            <button class="admin-tab-btn" data-tab="payments" id="tab-payments">
+                <span class="admin-tab-icon">💳</span>
+                <span class="admin-tab-label">Payments</span>
+            </button>
+            <button class="admin-tab-btn" data-tab="wifi" id="tab-wifi">
+                <span class="admin-tab-icon">📶</span>
+                <span class="admin-tab-label">Wi-Fi QRs</span>
+            </button>
+            <button class="admin-tab-btn" data-tab="links" id="tab-links">
+                <span class="admin-tab-icon">🔗</span>
+                <span class="admin-tab-label">Links</span>
+            </button>
+        </div>
 
-            <!-- Sorting & Range Filtering Controls -->
-            <div class="graph-controls">
-                <span class="graph-controls-title">Interactive Chart Controls</span>
-                <div class="controls-inner">
-                    <div class="control-group">
-                        <label for="graph-time-range">Range:</label>
-                        <select id="graph-time-range">
-                            <option value="7">Last 7 Days</option>
-                            <option value="30" selected>Last 30 Days</option>
-                            <option value="all">All Time</option>
-                        </select>
+        <!-- 📊 TAB: ANALYTICS -->
+        <div class="admin-tab-panel active" id="panel-analytics">
+            <div class="analytics-section">
+                <h3>📊 Analytics Overview</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-icon">👥</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-users">0</span>
+                            <span class="stat-label">Total Users</span>
+                        </div>
                     </div>
-                    <div class="control-group">
-                        <label for="graph-sort-order">Sort Chronology:</label>
-                        <select id="graph-sort-order">
-                            <option value="asc" selected>Oldest to Newest</option>
-                            <option value="desc">Newest to Oldest</option>
-                        </select>
+                    <div class="stat-card">
+                        <span class="stat-icon">📶</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-wifi-qrs">0</span>
+                            <span class="stat-label">Wi-Fi QRs</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-icon">📱</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-hotspot-qrs">0</span>
+                            <span class="stat-label">Hotspot QRs</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-icon">🔗</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-link-qrs">0</span>
+                            <span class="stat-label">Link QRs</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-color: rgba(251,146,60,0.3); background: rgba(251,146,60,0.05);">
+                        <span class="stat-icon">🪙</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-tokens" style="color:#fb923c;">0</span>
+                            <span class="stat-label">Tokens Issued</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05);">
+                        <span class="stat-icon">💰</span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-revenue" style="color:#4ade80;">₹0</span>
+                            <span class="stat-label">Total Revenue</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="charts-container">
-                <div class="chart-wrapper">
-                    <h4>📈 QR Codes Generation Activity</h4>
-                    <div class="chart-canvas-container">
-                        <canvas id="qr-generation-chart"></canvas>
+                <!-- Sorting & Range Filtering Controls -->
+                <div class="graph-controls">
+                    <span class="graph-controls-title">Interactive Chart Controls</span>
+                    <div class="controls-inner">
+                        <div class="control-group">
+                            <label for="graph-time-range">Range:</label>
+                            <select id="graph-time-range">
+                                <option value="7">Last 7 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="graph-sort-order">Sort Chronology:</label>
+                            <select id="graph-sort-order">
+                                <option value="asc" selected>Oldest to Newest</option>
+                                <option value="desc">Newest to Oldest</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="chart-wrapper">
-                    <h4>🍩 QR Code Types Distribution</h4>
-                    <div class="chart-canvas-container">
-                        <canvas id="qr-distribution-chart"></canvas>
+
+                <div class="charts-container">
+                    <div class="chart-wrapper">
+                        <h4>📈 QR Codes Generation Activity</h4>
+                        <div class="chart-canvas-container">
+                            <canvas id="qr-generation-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h4>🍩 QR Code Types Distribution</h4>
+                        <div class="chart-canvas-container">
+                            <canvas id="qr-distribution-chart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 👥 USER MANAGEMENT TABLE -->
-        <div class="table-section">
-            <h3>👥 Registered Users</h3>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Plan</th>
-                            <th>🪙 Tokens</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="auth-table-body">
-                        <tr><td colspan="7" class="empty-state">Loading...</td></tr>
-                    </tbody>
-                </table>
+        <!-- 👥 TAB: USERS -->
+        <div class="admin-tab-panel" id="panel-users">
+            <div class="table-section">
+                <h3>👥 Registered Users</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Plan</th>
+                                <th>🪙 Tokens</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auth-table-body">
+                            <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- 💳 PAYMENTS TABLE -->
-        <div class="table-section">
-            <h3>💳 Payments</h3>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>User</th>
-                            <th>Pack</th>
-                            <th>🪙 Tokens</th>
-                            <th>Amount</th>
-                            <th>Gateway</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="payment-table-body">
-                        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
-                    </tbody>
-                </table>
+        <!-- 💳 TAB: PAYMENTS -->
+        <div class="admin-tab-panel" id="panel-payments">
+            <div class="table-section">
+                <h3>💳 Payments</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>User</th>
+                                <th>Pack</th>
+                                <th>🪙 Tokens</th>
+                                <th>Amount</th>
+                                <th>Gateway</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payment-table-body">
+                            <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- 📶 WI-FI & HOTSPOT MANAGEMENT TABLE -->
-        <div class="table-section">
-            <h3>📶 Wi-Fi &amp; Hotspot QR Codes</h3>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Created By</th>
-                            <th>Type</th>
-                            <th>Network (SSID)</th>
-                            <th>Template</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="wifi-table-body">
-                        <tr><td colspan="5" class="empty-state">Loading...</td></tr>
-                    </tbody>
-                </table>
+        <!-- 📶 TAB: WI-FI QRs -->
+        <div class="admin-tab-panel" id="panel-wifi">
+            <div class="table-section">
+                <h3>📶 Wi-Fi &amp; Hotspot QR Codes</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Created By</th>
+                                <th>Type</th>
+                                <th>Network (SSID)</th>
+                                <th>Template</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wifi-table-body">
+                            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- 🔗 LINKS & URLS TABLE -->
-        <div class="table-section">
-            <h3>🔗 Links & URLs</h3>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Created By</th>
-                            <th>URL</th>
-                            <th>Template</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="link-table-body">
-                        <tr><td colspan="4" class="empty-state">Loading...</td></tr>
-                    </tbody>
-                </table>
+        <!-- 🔗 TAB: LINKS -->
+        <div class="admin-tab-panel" id="panel-links">
+            <div class="table-section">
+                <h3>🔗 Links &amp; URLs</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Created By</th>
+                                <th>URL</th>
+                                <th>Template</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="link-table-body">
+                            <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+
     </div>
 
     <!-- 🚫 BAN DETAILS MODAL OVERLAY -->
@@ -342,6 +377,7 @@
     <script src="admin.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function(){
+            // --- Nav toggle ---
             const toggle = document.querySelector('.nav-toggle');
             if (toggle) {
                 toggle.addEventListener('click', (e) => {
@@ -350,6 +386,19 @@
                 });
             }
             document.addEventListener('click', function(){ document.body.classList.remove('nav-open'); });
+
+            // --- Admin Tabs ---
+            const tabBtns = document.querySelectorAll('.admin-tab-btn');
+            const tabPanels = document.querySelectorAll('.admin-tab-panel');
+
+            function switchTab(tabName) {
+                tabBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+                tabPanels.forEach(panel => panel.classList.toggle('active', panel.id === 'panel-' + tabName));
+            }
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
         });
     </script>
 </body>
