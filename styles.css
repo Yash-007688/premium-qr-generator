@@ -498,6 +498,59 @@ body {
     margin-top: 1.5rem;
 }
 
+/* ============================
+   TOKEN COST LIVE BADGE
+   ============================ */
+.token-cost-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.token-cost-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 2rem;
+    border: 1px solid rgba(251,146,60,0.35);
+    background: linear-gradient(135deg, rgba(251,146,60,0.15), rgba(245,158,11,0.1));
+    color: #fb923c;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: help;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(251,146,60,0.12);
+    animation: tokenBadgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes tokenBadgePop {
+    0%   { transform: scale(0.88); opacity: 0.6; }
+    100% { transform: scale(1);    opacity: 1; }
+}
+
+.token-cost-badge:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 4px 14px rgba(251,146,60,0.22);
+}
+
+.token-cost-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    opacity: 0.75;
+    font-style: italic;
+}
+
+[data-theme="light"] .token-cost-badge {
+    box-shadow: 0 2px 8px rgba(251,146,60,0.18);
+}
+
+
 canvas {
     max-width: 100%;
     max-height: 65vh;

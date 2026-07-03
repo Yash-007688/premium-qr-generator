@@ -479,6 +479,7 @@ function setConnectionType(wtype) {
         }
     }
     generatePreview();
+    updateTokenCostPreview();
 }
 
 wtypeBtns.forEach(btn => {
@@ -908,6 +909,9 @@ async function generatePreview() {
 
     // Wait slightly for canvas to be populated by the library
     setTimeout(() => drawPoster(), 50);
+
+    // Update live token cost badge
+    updateTokenCostPreview();
 }
 
 // 5. Draw the Final Poster on HTML5 Canvas
@@ -1528,51 +1532,135 @@ document.getElementById('download-btn').addEventListener('click', async () => {
             return;
         }
 
+// ============================================================
+//  TOKEN COST ENGINE — Plan-aware pricing
+// ============================================================
+
+// Base costs for FREE tier. Pro = 0.7x, Enterprise = 0.5x
+const TOKEN_COSTS = {
+    base_wifi:        50,   // Wi-Fi QR base
+    base_hotspot:     75,   // Hotspot QR base
+    base_link:        30,   // Link/URL QR base
+    hotspot_bonus:    15,   // Extra for hotspot type on wifi tab
+    dynamic_link:     25,   // Dynamic URL toggle
+    template_savage:  30,   // Savage Neon template
+    template_artdeco: 40,   // Art Deco template
+    gradient:         15,   // Gradient color
+    logo:             20,   // Logo upload
+    bg_image:         50,   // Custom background image
+    layer_each:       10,   // Each canvas layer
+    timestamps:       20,   // YouTube timestamps added
+};
+
+const TIER_MULTIPLIER = {
+    free:       1.0,
+    pro:        0.7,
+    enterprise: 0.5,
+};
+
 function calculateQRTokenCost() {
-    let cost = 2; // Base cost
-    const breakdown = ['Base QR: 2 tokens'];
+    const multiplier = TIER_MULTIPLIER[userTier] || 1.0;
+    const round = (n) => Math.max(1, Math.round(n));
 
     const activeTab = document.querySelector('.tab-btn.active')?.getAttribute('data-tab');
-    if (activeTab === 'url') {
+    let cost = 0;
+    const breakdown = [];
+
+    // --- BASE COST per QR type ---
+    if (activeTab === 'wifi') {
+        if (currentWtype === 'hotspot') {
+            const base = round(TOKEN_COSTS.base_hotspot * multiplier);
+            cost += base;
+            breakdown.push(`📶 Hotspot QR Base: ${base} tokens`);
+        } else {
+            const base = round(TOKEN_COSTS.base_wifi * multiplier);
+            cost += base;
+            breakdown.push(`📶 Wi-Fi QR Base: ${base} tokens`);
+        }
+    } else {
+        const base = round(TOKEN_COSTS.base_link * multiplier);
+        cost += base;
+        breakdown.push(`🔗 Link QR Base: ${base} tokens`);
+
+        // Dynamic URL add-on
         const isDynamic = document.querySelector('input[name="qr-type-toggle"]:checked')?.value === 'dynamic';
         if (isDynamic) {
-            cost += 5;
-            breakdown.push('Dynamic Link: +5 tokens');
+            const dyn = round(TOKEN_COSTS.dynamic_link * multiplier);
+            cost += dyn;
+            breakdown.push(`⚡ Dynamic URL: +${dyn} tokens`);
+        }
+
+        // YouTube Timestamps
+        if (ytTimestampState && ytTimestampState.timestamps.length > 0) {
+            const ts = round(TOKEN_COSTS.timestamps * multiplier);
+            cost += ts;
+            breakdown.push(`🎬 YouTube Timestamps: +${ts} tokens`);
         }
     }
 
+    // --- TEMPLATE ADD-ONS ---
     if (currentTemplate === 'savage') {
-        cost += 3;
-        breakdown.push('Savage Template: +3 tokens');
+        const t = round(TOKEN_COSTS.template_savage * multiplier);
+        cost += t;
+        breakdown.push(`🔥 Savage Neon Template: +${t} tokens`);
     } else if (currentTemplate === 'artdeco') {
-        cost += 4;
-        breakdown.push('ArtDeco Template: +4 tokens');
+        const t = round(TOKEN_COSTS.template_artdeco * multiplier);
+        cost += t;
+        breakdown.push(`✨ Art Deco Template: +${t} tokens`);
     }
 
+    // --- CUSTOMIZATION ADD-ONS ---
     const enableGradient = document.getElementById('enable-gradient')?.checked;
     if (enableGradient) {
-        cost += 2;
-        breakdown.push('Gradient Color: +2 tokens');
+        const g = round(TOKEN_COSTS.gradient * multiplier);
+        cost += g;
+        breakdown.push(`🎨 Gradient Color: +${g} tokens`);
     }
 
     if (uploadedLogoDataUrl) {
-        cost += 3;
-        breakdown.push('Logo Upload: +3 tokens');
+        const l = round(TOKEN_COSTS.logo * multiplier);
+        cost += l;
+        breakdown.push(`🖼️ Logo Upload: +${l} tokens`);
     }
 
     if (uploadedBgImageDataUrl) {
-        cost += 5;
-        breakdown.push('Custom BG Image: +5 tokens');
+        const bg = round(TOKEN_COSTS.bg_image * multiplier);
+        cost += bg;
+        breakdown.push(`🌄 Custom BG Image: +${bg} tokens`);
     }
 
     if (canvasLayers && canvasLayers.length > 0) {
-        const layerCost = canvasLayers.length * 2;
+        const layerCost = round(TOKEN_COSTS.layer_each * multiplier) * canvasLayers.length;
         cost += layerCost;
-        breakdown.push(`Canvas Layers (${canvasLayers.length}): +${layerCost} tokens`);
+        breakdown.push(`🎭 Canvas Layers (×${canvasLayers.length}): +${layerCost} tokens`);
     }
 
-    return { total: cost, details: breakdown.join('\n') };
+    return { total: cost, details: breakdown.join('\n'), breakdown };
 }
+
+// Live-update the token cost badge in the UI
+function updateTokenCostPreview() {
+    const badge = document.getElementById('token-cost-badge');
+    if (!badge) return;
+    const costInfo = calculateQRTokenCost();
+    badge.textContent = `🪙 ${costInfo.total} tokens`;
+    badge.title = 'Cost Breakdown:\n' + costInfo.details;
+    // Color the badge based on cost
+    if (costInfo.total <= 30) {
+        badge.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.1))';
+        badge.style.borderColor = 'rgba(34,197,94,0.35)';
+        badge.style.color = '#4ade80';
+    } else if (costInfo.total <= 80) {
+        badge.style.background = 'linear-gradient(135deg, rgba(251,146,60,0.15), rgba(245,158,11,0.1))';
+        badge.style.borderColor = 'rgba(251,146,60,0.35)';
+        badge.style.color = '#fb923c';
+    } else {
+        badge.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.1))';
+        badge.style.borderColor = 'rgba(239,68,68,0.35)';
+        badge.style.color = '#f87171';
+    }
+}
+
 
         // 1. Limit Check for Free Tier only
         if (userTier === 'free') {
