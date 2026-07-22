@@ -984,6 +984,39 @@ function drawPoster() {
     ctx.drawImage(rawCanvas, qrX, qrY, qrS, qrS);
     ctx.shadowBlur = 0; // Reset shadow
 
+    // Render Selected Framed Sticker Badge Overlay
+    const stickerStyle = document.getElementById('framed-sticker-select')?.value || 'none';
+    if (stickerStyle !== 'none') {
+        ctx.save();
+        ctx.textAlign = "center";
+        let badgeText = "";
+        let badgeBg = "#6366f1";
+        if (stickerStyle === 'scan-me') { badgeText = "🏷️ SCAN ME"; badgeBg = "#ef4444"; }
+        else if (stickerStyle === 'wifi-connect') { badgeText = "📶 FREE WI-FI"; badgeBg = "#10b981"; }
+        else if (stickerStyle === 'follow-us') { badgeText = "✨ FOLLOW US"; badgeBg = "#8b5cf6"; }
+        else if (stickerStyle === 'order-online') { badgeText = "🍔 ORDER ONLINE"; badgeBg = "#f59e0b"; }
+
+        // Draw Pill Badge at top of QR box
+        const badgeW = 200;
+        const badgeH = 42;
+        const badgeX = qrX + (qrS / 2) - (badgeW / 2);
+        const badgeY = qrY - (badgeH / 2);
+
+        ctx.fillStyle = badgeBg;
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 20);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 18px 'Inter', sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.fillText(badgeText, qrX + (qrS / 2), badgeY + (badgeH / 2));
+        ctx.restore();
+    }
+
     // Draw custom overlay layers (only for Pro/Enterprise)
     if (userTier !== 'free') {
         canvasLayers.forEach(layer => {
@@ -1018,7 +1051,9 @@ function drawPoster() {
         ctx.fillText("✨ Created with QR Web", w / 2, h - 35);
     }
 
-    // Show download button once ready
+    // Show download action group once ready
+    const downloadGroup = document.getElementById('download-group');
+    if (downloadGroup) downloadGroup.style.display = 'flex';
     document.getElementById('download-btn').style.display = 'block';
 }
 
@@ -1837,3 +1872,143 @@ function showUnlimitedDownloadToast(tierLabel) {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+
+// Register PWA Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('Service Worker registration failed:', err));
+    });
+}
+
+// Bind Framed Badge Change
+document.getElementById('framed-sticker-select')?.addEventListener('change', () => drawPoster());
+
+// Download Sample CSV Template Helper
+document.getElementById('download-csv-template-btn')?.addEventListener('click', () => {
+    const csvContent = "data:text/csv;charset=utf-8,SSID,Password,Encryption\nHotel_Lobby_WiFi,Welcome2026,WPA\nCoffee_Shop_Guest,Coffee123,WPA\nVIP_Lounge_Hotspot,VipAccess99,WPA";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "bulk_qr_sample_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+// Multi-Format Download Helper (PNG, SVG, PDF)
+function downloadPosterFile(imageData, filename) {
+    const format = document.getElementById('export-format-select')?.value || 'png';
+
+    if (format === 'pdf' && window.jspdf) {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [800, 800] });
+        pdf.addImage(imageData, 'PNG', 0, 0, 800, 800);
+        pdf.save(filename.replace(/\.[^/.]+$/, "") + ".pdf");
+    } else if (format === 'svg') {
+        const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><image href="${imageData}" width="800" height="800"/></svg>`;
+        const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.replace(/\.[^/.]+$/, "") + ".svg";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } else {
+        const a = document.createElement('a');
+        a.href = imageData;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+}
+
+// Bulk Batch Generation Handler (.ZIP)
+document.getElementById('generate-bulk-btn')?.addEventListener('click', async () => {
+    if (userTier === 'free') {
+        showUpgradeModal('Bulk Batch Generation');
+        return;
+    }
+
+    const fileInput = document.getElementById('bulk-csv-file');
+    const statusEl = document.getElementById('bulk-status');
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select a CSV file first.');
+        return;
+    }
+
+    if (!window.Papa || !window.JSZip) {
+        alert('Required libraries loading... Please try again in 5 seconds.');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    statusEl.style.display = 'block';
+    statusEl.innerText = 'Parsing CSV file...';
+
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+            const rows = results.data;
+            if (!rows || rows.length === 0) {
+                statusEl.innerText = 'CSV file is empty.';
+                return;
+            }
+
+            const limit = Math.min(rows.length, 50);
+            const zip = new JSZip();
+            statusEl.innerText = `Generating 0 / ${limit} QRs...`;
+
+            for (let i = 0; i < limit; i++) {
+                const row = rows[i];
+                const ssid = row.SSID || row.ssid || row.Name || `Network_${i+1}`;
+                const pass = row.Password || row.password || row.Pass || '';
+                const enc  = row.Encryption || row.encryption || 'WPA';
+
+                const escapeStr = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/:/g, '\\:');
+                const qrData = `WIFI:T:${enc};S:${escapeStr(ssid)};P:${escapeStr(pass)};H:false;;`;
+
+                // Render temporary canvas for each row
+                const tempDiv = document.createElement('div');
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+
+                const tempQr = new QRCodeStyling({
+                    width: 400,
+                    height: 400,
+                    data: qrData,
+                    dotsOptions: { color: "#000000", type: "rounded" },
+                    backgroundOptions: { color: "#ffffff" }
+                });
+
+                tempQr.append(tempDiv);
+                await new Promise(r => setTimeout(r, 100));
+
+                const tempCanvas = tempDiv.querySelector('canvas');
+                if (tempCanvas) {
+                    const base64 = tempCanvas.toDataURL('image/png').split(',')[1];
+                    const cleanName = ssid.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    zip.file(`qr_${cleanName}_wifi.png`, base64, { base64: true });
+                }
+
+                document.body.removeChild(tempDiv);
+                statusEl.innerText = `Generated ${i + 1} / ${limit} QRs...`;
+            }
+
+            statusEl.innerText = 'Compressing into ZIP file...';
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = `bulk_qr_codes_${Date.now()}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                statusEl.innerText = `Success! Downloaded ${limit} QR Posters in ZIP archive.`;
+            });
+        }
+    });
+});
+

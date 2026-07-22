@@ -1,0 +1,17 @@
+{
+  "name": "QR Web Generator & Studio",
+  "short_name": "QR Web",
+  "description": "Generate Wi-Fi, Hotspot, and Link QR Codes with custom poster designs.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

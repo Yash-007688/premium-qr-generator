@@ -13,7 +13,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Web | Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
     <script src="qr-code-styling.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="logo.png" type="image/png">
 </head>
@@ -46,9 +51,10 @@
 
 
                 <!-- Tab Navigation -->
-                <div class="tabs studio-tabs">
+                <div class="tabs studio-tabs" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
                     <button class="tab-btn active" data-tab="wifi" title="Wi-Fi / Hotspot">📶 Wi-Fi</button>
                     <button class="tab-btn" data-tab="url" title="Website URL">🔗 URL</button>
+                    <button class="tab-btn" data-tab="bulk" id="bulk-tab-btn" title="Batch Generation">📦 Bulk</button>
                     <button class="tab-btn" data-tab="analytics" id="analytics-tab-btn" title="Scan Analytics">📈 Analytics</button>
                 </div>
 
@@ -259,9 +265,19 @@
                     </div>
                 </div>
 
-                <!-- Poster Text Section -->
-                <div class="section-title">Poster Text</div>
+                <!-- Poster Text & Framing Section -->
+                <div class="section-title">Poster Text &amp; Framed Sticker</div>
                 <div class="input-group">
+                    <label for="framed-sticker-select">Framed Badge Style</label>
+                    <select id="framed-sticker-select" class="form-input">
+                        <option value="none" selected>None (Clean)</option>
+                        <option value="scan-me">🏷️ SCAN ME badge</option>
+                        <option value="wifi-connect">📶 FREE WI-FI frame</option>
+                        <option value="follow-us">✨ FOLLOW US frame</option>
+                        <option value="order-online">🍔 ORDER ONLINE frame</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-top:0.8rem;">
                     <label for="poster-title">Top Title</label>
                     <input type="text" id="poster-title" class="form-input" placeholder="e.g. SCAN TO CONNECT" value="SCAN TO CONNECT" maxlength="30">
                 </div>
@@ -291,6 +307,23 @@
                         <p style="font-size:0.75rem; color:var(--text-muted); text-align:center;" id="no-layers-msg">No custom layers yet. Drag elements on the canvas once added!</p>
                     </div>
                 </div>
+
+                <!-- Bulk Generator Section -->
+                <div id="bulk-form" class="form-section">
+                    <div class="section-title">📦 Bulk Batch Generator <span class="badge-pro">PRO</span></div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Upload a CSV file to generate up to 50 QR posters at once in a single ZIP file.</p>
+                    
+                    <div class="input-group">
+                        <label for="bulk-csv-file">Upload CSV File</label>
+                        <input type="file" id="bulk-csv-file" accept=".csv" class="form-input" style="padding: 0.4rem;">
+                    </div>
+                    
+                    <button id="download-csv-template-btn" class="secondary-btn" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; margin-top: 0.5rem;">📥 Download Sample CSV Template</button>
+                    
+                    <div id="bulk-status" style="margin-top: 1rem; font-size: 0.82rem; display: none;" class="profile-info-value-static">Status: Idle</div>
+                    
+                    <button id="generate-bulk-btn" class="primary-btn" style="margin-top: 1rem;">⚡ Generate & Download ZIP</button>
+                </div>
             </aside>
 
             <!-- Preview Panel -->
@@ -307,7 +340,16 @@
                     <!-- Centralized Action Station under Canvas -->
                     <div class="preview-actions">
                         <button id="generate-btn" class="primary-btn">Generate Preview</button>
-                        <button id="download-btn" class="secondary-btn" style="display: none;">Download Poster</button>
+                        <div id="download-group" style="display: none; width: 100%; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; gap: 0.5rem; width: 100%;">
+                                <select id="export-format-select" class="form-input" style="flex: 1; padding: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                                    <option value="png" selected>PNG Image (High-Res)</option>
+                                    <option value="pdf">Printable PDF Document</option>
+                                    <option value="svg">Vector SVG Graphic</option>
+                                </select>
+                                <button id="download-btn" class="secondary-btn" style="flex: 1.5;">Download Poster</button>
+                            </div>
+                        </div>
                     </div>
                     <!-- Live Token Cost Badge -->
                     <div class="token-cost-row">

@@ -322,9 +322,10 @@ async function loadPostersHistory() {
                 <div class="hcard-details">
                     <span>Style: <strong>${item.template}</strong></span>
                 </div>
-                <div class="hcard-actions">
-                    <button class="action-btn" style="flex:1; padding:0.4rem 0.6rem; font-size:0.8rem;" id="dl-btn-${item.id}">Download</button>
-                    <button class="mod-btn mod-btn-danger" style="padding:0.4rem 0.6rem; font-size:0.8rem; margin:0;" id="del-btn-${item.id}">Delete</button>
+                <div class="hcard-actions" style="gap: 0.3rem;">
+                    <button class="action-btn" style="flex:1; padding:0.4rem 0.6rem; font-size:0.78rem;" id="dl-btn-${item.id}">Download</button>
+                    <button class="secondary-btn" style="padding:0.4rem 0.6rem; font-size:0.78rem;" id="inv-btn-${item.id}" title="Download Receipt PDF">🧾 Invoice</button>
+                    <button class="mod-btn mod-btn-danger" style="padding:0.4rem 0.6rem; font-size:0.78rem; margin:0;" id="del-btn-${item.id}">Delete</button>
                 </div>
             `;
 
@@ -337,6 +338,11 @@ async function loadPostersHistory() {
                 } else {
                     alert('Poster image data not found.');
                 }
+            });
+
+            // Bind invoice PDF download click
+            card.querySelector(`#inv-btn-${item.id}`).addEventListener('click', () => {
+                generatePDFInvoice(item, formattedDate);
             });
 
             // Bind delete click
@@ -382,3 +388,66 @@ async function deletePoster(id, dbTable) {
         alert(`Error deleting poster: ${e.message}`);
     }
 }
+
+// PDF Invoice Generator
+function generatePDFInvoice(item, formattedDate) {
+    if (!window.jspdf) {
+        alert('Invoice generator library loading... Please try again in 3 seconds.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFillColor(15, 23, 42); // #0f172a
+    doc.rect(0, 0, 210, 40, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("✨ QR WEB RECEIPT", 15, 25);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Official Download Invoice", 145, 25);
+
+    // Invoice Meta
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    doc.text(`Invoice ID: INV-${item.id.slice(0, 8).toUpperCase()}`, 15, 55);
+    doc.text(`Date: ${formattedDate}`, 15, 63);
+    doc.text(`User ID: ${currentUserId.slice(0, 12)}...`, 15, 71);
+
+    // Table Header
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, 85, 180, 10, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.text("Description", 20, 92);
+    doc.text("Type / Template", 100, 92);
+    doc.text("Status", 160, 92);
+
+    // Row Item
+    doc.setFont("helvetica", "normal");
+    doc.text(`QR Poster: ${item.target.slice(0, 30)}`, 20, 107);
+    doc.text(`${item.type} (${item.template})`, 100, 107);
+    doc.text("COMPLETED", 160, 107);
+
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(15, 115, 195, 115);
+
+    // Summary Box
+    doc.setFont("helvetica", "bold");
+    doc.text("Total Tokens / Fee:", 110, 130);
+    doc.text("PAID ✓", 165, 130);
+
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Thank you for using QR Web Generator & Studio!", 15, 160);
+    doc.text("Support: yashrajmoolchandani@gmail.com | QR Web Studio Inc.", 15, 167);
+
+    doc.save(`invoice_qrweb_${item.id.slice(0, 8)}.pdf`);
+}
+
